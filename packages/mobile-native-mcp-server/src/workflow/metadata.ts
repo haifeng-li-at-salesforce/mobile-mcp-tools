@@ -6,6 +6,7 @@
  */
 
 import { Annotation } from '@langchain/langgraph';
+import { EnvironmentCheckReport } from './nodes/environment.js';
 
 /**
  * Workflow state annotation for LangGraph
@@ -18,6 +19,7 @@ export const MobileNativeWorkflowState = Annotation.Root({
 
   // Plan phase state
   environmentValidated: Annotation<boolean>,
+  environmentCheckReport: Annotation<EnvironmentCheckReport>,
   selectedTemplate: Annotation<string>,
   projectName: Annotation<string>,
   projectPath: Annotation<string>,
