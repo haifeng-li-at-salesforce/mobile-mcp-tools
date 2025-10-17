@@ -115,11 +115,15 @@ export class MobileNativeOrchestrator extends AbstractTool<typeof ORCHESTRATOR_T
         interrupts: interruptedTask.interrupts.length,
       });
 
-      // Resume workflow with user input from previous tool execution
-      result = await compiledWorkflow.invoke(
-        new Command({ resume: input.userInput }),
-        threadConfig
+      // Validate and prepare resume value
+      const resumeValue = this.validateResumeInput(
+        input.userInput,
+        interruptedTask,
+        threadConfig.configurable.thread_id
       );
+
+      // Resume workflow with validated result from previous tool execution
+      result = await compiledWorkflow.invoke(new Command({ resume: resumeValue }), threadConfig);
     } else {
       // Start new workflow session
       this.logger.info('Starting new workflow execution');
@@ -171,6 +175,60 @@ export class MobileNativeOrchestrator extends AbstractTool<typeof ORCHESTRATOR_T
     return {
       orchestrationInstructionsPrompt: 'The workflow has completed successfully.',
     };
+  }
+
+  /**
+   * Validates the resume input by parsing JSON if needed
+   *
+   * @param userInput The input provided by the user/LLM for resumption
+   * @param interruptedTask The task that was interrupted (from LangGraph state)
+   * @param threadId The workflow thread ID for logging
+   * @returns The parsed input value
+   * @throws Error if interrupt data is not available or JSON parsing fails
+   */
+  private validateResumeInput(
+    userInput: unknown,
+    interruptedTask: { interrupts: Array<{ value?: unknown }> },
+    threadId: string
+  ): unknown {
+    // Extract the interrupt data from the task
+    const interruptData = interruptedTask.interrupts[0]?.value;
+
+    if (!interruptData) {
+      const error = new Error('Cannot resume workflow: No interrupt data available');
+      this.logger.error(
+        `No interrupt data found in interrupted task (threadId: ${threadId})`,
+        error
+      );
+      throw error;
+    }
+
+    // Type guard to check if interrupt data has the expected structure
+    const mcpToolInvocationData = interruptData as MCPToolInvocationData<
+      z.ZodObject<z.ZodRawShape>
+    >;
+
+    const toolName = mcpToolInvocationData.llmMetadata.name;
+
+    this.logger.debug('resumed input', { threadId, toolName, userInput });
+
+    // If userInput is a string, try to parse it as JSON
+    let inputToParse = userInput;
+    if (typeof userInput === 'string') {
+      try {
+        inputToParse = JSON.parse(userInput);
+        this.logger.debug('Successfully parsed JSON string input', {
+          threadId,
+          toolName,
+        });
+      } catch (error) {
+        const errorMessage = `Resume input JSON parsing failed for tool "${toolName}" (threadId: ${threadId}): ${error instanceof Error ? error.message : String(error)}`;
+        this.logger.error(errorMessage, error instanceof Error ? error : new Error(String(error)));
+        throw new Error(errorMessage);
+      }
+    }
+
+    return inputToParse;
   }
 
   /**

@@ -59,7 +59,7 @@ export class EnvironmentValidationNode extends BaseNode {
     }
 
     // Execute the sf force lightning local setup command
-    const command = `sf force lightning local setup -p ${platform} -l ${apiLevel} --json`;
+    const command = `sf force lightning local setup -p ${platform.toLowerCase()} -l ${apiLevel} --json`;
 
     let environmentCheckOutput: EnvironmentCheckOutput = {
       hasMetAllRequirements: false,
