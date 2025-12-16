@@ -1,0 +1,28 @@
+{
+  title: "Mobile SDK",
+  description: "Harness the power of Salesforce Platform within stand-alone mobile apps. Unlike a desktop app, a Mobile SDK app accesses Salesforce data through a mobile device’s native operating system rather than through a browser. Before you dive into Mobile SDK, take a look at how mobile development works, and learn about essential Salesforce developer resources.",
+  features: [
+    {
+      title: "Device-native integration",
+      description: "Use your Mobile SDK app to access Salesforce data through a mobile device's native operating system rather than a browser.",
+    },
+    {
+      title: "Online and offline support",
+      description: "Configure Mobile SDK apps to move seamlessly between online and offline states.",
+    },
+    {
+      title: "Full customizability",
+      description: "Create bespoke mobile apps that harness the power of Salesforce Platform.",
+    },
+  ],
+  links: [
+    {
+      label: "Get Started",
+      url: "/mobile-sdk/guide",
+    },
+    {
+      label: "Reference",
+      url: "/mobile-sdk/guide/reference.html",
+    },
+  ],
+}

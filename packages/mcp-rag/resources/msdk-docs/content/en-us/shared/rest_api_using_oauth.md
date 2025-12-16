@@ -1,0 +1,1 @@
+To initiate a user session with force.js, you call `force.login()`. After the user logs in to an app running in the container, the network plug-in refreshes tokens as necessary when the app tries to access Salesforce resources. The following code, adapted from the ContactExplorer sample, demonstrates a typical `force.login()` implementation.

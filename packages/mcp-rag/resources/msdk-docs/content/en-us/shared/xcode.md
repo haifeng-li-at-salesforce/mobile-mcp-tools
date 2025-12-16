@@ -1,0 +1,1 @@
+- Xcode version: 14 or later. (We recommend the latest version.)

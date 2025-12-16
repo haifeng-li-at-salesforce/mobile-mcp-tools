@@ -1,0 +1,3 @@
+# LoginActivity Class
+
+`LoginActivity` defines the login screen. The login workflow is worth describing because it explains two other classes in the activity package. In the login activity, if you press the Menu button, you get three options: **Clear Cookies**, **Reload**, and **Change Server**. **Change Server** launches an instance of the `ServerPickerActivity` class, which displays **Production** and **Sandbox** servers and an **Add Connection** option. When a user clicks **Add Connection**, `ServerPickerActivity` launches an instance of the `CustomServerURLEditor` class. This class displays a popover dialog that lets you type in the name of the custom server.

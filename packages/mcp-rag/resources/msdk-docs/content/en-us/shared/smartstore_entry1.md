@@ -1,0 +1,1 @@
+If `\_soupEntryId` is already set in any of the entries presented for upsert, SmartStore updates the soup entry that matches that ID. If an upsert entry doesn’t have a `\_soupEntryId` slot, or its `\_soupEntryId` doesn’t match an existing soup entry, SmartStore inserts the entry and overwrites its `\_soupEntryId`.

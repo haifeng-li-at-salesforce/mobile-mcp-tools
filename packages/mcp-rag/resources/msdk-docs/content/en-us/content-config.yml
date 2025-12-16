@@ -1,0 +1,28 @@
+maintainer: "cx-mobile-sdk"
+
+name: "mobile-sdk"
+
+pages:
+  /sitemap-contents-internal*.xml:
+    content-type: sitemap
+    excludes:
+      - /sitemap-contents-internal*.xml
+      - /search
+      - /robots.txt
+
+projects:
+  - title: "Mobile SDK Development Guide"
+    meta:
+      brand: "platform"
+    id: mobile-sdk
+    maintainer: "cx-mobile-sdk"
+    description: "Build standalone native, React Native, and hybrid mobile apps that access Salesforce data."
+    releasePhaseConfigs:
+      - phase: "devpreview"
+        title: "We've Moved"
+        body: "Welcome to the new home of the Mobile SDK Developer Guide! For now, the Japanese guide can be found in <a href='https://resources.docs.salesforce.com/rel1/doc/en-us/static/pdf/mobile_sdk_ja.pdf'>PDF form.</a>"
+    overview:
+      source: "mobile-sdk/overview/mobile-sdk.json5"
+    guide:
+      source: "mobile-sdk/guides/index.yml"
+      releasePhase: "devpreview"
