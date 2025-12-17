@@ -1,0 +1,1 @@
+The identity URL is also a RESTful API to query for additional information about users, such as their username, email address, and org ID. It also returns endpoints that the client can talk to, such as photos for profiles and accessible API endpoints.

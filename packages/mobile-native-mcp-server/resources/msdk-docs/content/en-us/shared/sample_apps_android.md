@@ -1,0 +1,2 @@
+- **MobileSyncExplorer** demonstrates the power of the native Mobile Sync library on Android. It resides in Mobile SDK for Android under `native/NativeSampleApps/MobileSyncExplorer`.
+- **RestExplorer** demonstrates the OAuth and REST API functions of Mobile SDK. It’s also useful for investigating REST API actions from a tablet.

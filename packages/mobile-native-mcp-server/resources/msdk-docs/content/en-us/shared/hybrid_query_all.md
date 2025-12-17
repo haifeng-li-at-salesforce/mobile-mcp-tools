@@ -1,0 +1,1 @@
+`buildAllQuerySpec(indexPath, order, pageSize, selectPaths)` returns all entries in the soup, with no particular order. order and pageSize are optional, and default to “ascending” and 10, respectively. The selectPaths argument is also optional.

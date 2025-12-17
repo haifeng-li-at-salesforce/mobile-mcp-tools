@@ -127,17 +127,17 @@ export class OramaStore {
   async removeDocumentChunks(doc: string): Promise<void> {
     const db = this.ensureInitialized();
 
-    // First, find all chunks for this document using text search
-    const results = await search(db as AnyOrama, {
-      term: '',
-      limit: 10000, // Ensure we get all chunks
-    });
+    // Access documents directly from Orama's internal document store
+    const oramaDb = db as AnyOrama;
+    const allDocs = oramaDb.documentsStore.getAll(oramaDb.data.docs) as Record<
+      string,
+      OramaDocument
+    >;
 
     // Filter and remove chunks matching the doc
-    for (const hit of results.hits) {
-      const document = hit.document as unknown as OramaDocument;
+    for (const document of Object.values(allDocs)) {
       if (document.doc === doc) {
-        await remove(db, hit.id);
+        await remove(db, document.id);
       }
     }
   }
@@ -267,30 +267,32 @@ export class OramaStore {
 
   /**
    * Get all chunks from the store.
+   * Uses Orama's internal document store directly instead of search.
    * @returns Array of all chunks
    */
   async getAllChunks(): Promise<Chunk[]> {
     const db = this.ensureInitialized();
 
-    const results = await search(db as AnyOrama, {
-      term: '',
-      limit: 100000, // Large limit to get all
-      includeVectors: true,
-    });
+    // Access documents directly from Orama's internal document store
+    // This is more efficient than using search with an empty term
+    const oramaDb = db as AnyOrama;
+    const allDocs = oramaDb.documentsStore.getAll(oramaDb.data.docs) as Record<
+      string,
+      OramaDocument
+    >;
 
-    return results.hits.map(hit => {
-      const doc = hit.document as unknown as OramaDocument;
-      return {
-        id: doc.id,
-        text: doc.text,
-        embedding: doc.embedding,
-        doc: doc.doc,
-        path: doc.path,
-        section: doc.section,
-        sectionId: doc.sectionId,
-        chunkIndex: doc.chunkIndex,
-      } as Chunk;
-    });
+    const chunks: Chunk[] = Object.values(allDocs).map(doc => ({
+      id: doc.id,
+      text: doc.text,
+      embedding: doc.embedding,
+      doc: doc.doc,
+      path: doc.path,
+      section: doc.section,
+      sectionId: doc.sectionId,
+      chunkIndex: doc.chunkIndex,
+    }));
+
+    return chunks;
   }
 
   /**

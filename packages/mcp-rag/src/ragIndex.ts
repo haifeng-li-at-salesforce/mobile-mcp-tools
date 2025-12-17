@@ -127,18 +127,27 @@ export class RagIndex {
    * @param dirPath - Path to the directory
    * @param recursive - Whether to search recursively (default: true)
    * @param forceReindex - Force re-indexing even if content hasn't changed
+   * @param maxChunkCount - Maximum number of chunks to index (for testing, default: unlimited)
    */
   async indexDirectory(
     dirPath: string,
     recursive: boolean = true,
-    forceReindex: boolean = false
+    forceReindex: boolean = false,
+    maxChunkCount?: number
   ): Promise<void> {
     await this.initialize();
 
     // Parse all documents
     const documents = await this.parser.parseDirectory(dirPath, recursive);
 
+    let totalChunksIndexed = 0;
+
     for (const document of documents) {
+      // Check if we've reached the max chunk count
+      if (maxChunkCount !== undefined && totalChunksIndexed >= maxChunkCount) {
+        break;
+      }
+
       // Check if re-indexing is needed
       const docKey = `${document.path}/${document.doc}`;
       const storedHash = this.metadata.documentHashes[docKey];
@@ -153,14 +162,25 @@ export class RagIndex {
       // Chunk the document
       const preChunks = this.chunker.chunkDocument(document);
 
+      // Limit chunks if we're approaching maxChunkCount
+      let chunksToProcess = preChunks;
+      if (maxChunkCount !== undefined) {
+        const remainingCapacity = maxChunkCount - totalChunksIndexed;
+        if (preChunks.length > remainingCapacity) {
+          chunksToProcess = preChunks.slice(0, remainingCapacity);
+        }
+      }
+
       // Generate embeddings and create full chunks
-      const chunks = await this.createChunksWithEmbeddings(preChunks);
+      const chunks = await this.createChunksWithEmbeddings(chunksToProcess);
 
       // Insert into store
       await this.store.insertChunks(chunks);
 
       // Update metadata
       this.metadata.documentHashes[docKey] = document.contentHash;
+
+      totalChunksIndexed += chunks.length;
     }
   }
 

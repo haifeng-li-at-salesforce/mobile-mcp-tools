@@ -1,0 +1,1 @@
+After a client—via a connected app—receives an access token, it can use a refresh token to get a new session when its current session expires. The connected app’s session timeout value determines when an access token is no longer valid and when to apply for a new one using a refresh token.

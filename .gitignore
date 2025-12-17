@@ -19,10 +19,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# IDE
+.cursor/
 
-.sfdx/
-.cursor/rules/nx-rules.mdc
+# SFDX
 .sfdx/
 .github/instructions/nx.instructions.md
-
-.cursor/mcp.json

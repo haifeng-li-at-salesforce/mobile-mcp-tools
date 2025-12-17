@@ -253,12 +253,67 @@ export class SectionChunker {
   chunkDocument(document: ParsedDocument): PreChunk[] {
     const chunks: PreChunk[] = [];
 
+    // Track section title occurrences to handle duplicates
+    const sectionTitleCounts: Map<string, number> = new Map();
+
     for (const section of document.sections) {
-      const sectionChunks = this.chunkSection(section, document.doc, document.path);
+      // Get or initialize the count for this section title
+      const currentCount = sectionTitleCounts.get(section.title) ?? 0;
+      sectionTitleCounts.set(section.title, currentCount + 1);
+
+      // Create a unique section title by appending occurrence index if needed
+      const uniqueSectionTitle =
+        currentCount > 0 ? `${section.title}[${currentCount}]` : section.title;
+
+      const sectionChunks = this.chunkSectionWithTitle(
+        section,
+        document.doc,
+        document.path,
+        uniqueSectionTitle
+      );
       chunks.push(...sectionChunks);
     }
 
     return chunks;
+  }
+
+  /**
+   * Chunk a single parsed section with a custom unique title.
+   * @param section - The parsed section to chunk
+   * @param doc - Document filename
+   * @param docPath - Document directory path
+   * @param uniqueTitle - Unique title for ID generation (handles duplicate titles)
+   * @returns Array of pre-chunks (without embeddings)
+   */
+  private chunkSectionWithTitle(
+    section: ParsedSection,
+    doc: string,
+    docPath: string,
+    uniqueTitle: string
+  ): PreChunk[] {
+    const sectionId = `${doc}::${uniqueTitle}`;
+
+    // Combine header and content for chunking
+    const fullText =
+      section.level > 0
+        ? `${'#'.repeat(section.level)} ${section.title}\n\n${section.content}`
+        : section.content;
+
+    const textChunks = splitTextIntoChunks(
+      fullText,
+      this.options.chunkSize,
+      this.options.chunkOverlap
+    );
+
+    return textChunks.map((text, index) => ({
+      id: `${doc}::${uniqueTitle}::${index}`,
+      text,
+      doc,
+      path: docPath,
+      section: section.title, // Keep original title for display
+      sectionId,
+      chunkIndex: index,
+    }));
   }
 
   /**

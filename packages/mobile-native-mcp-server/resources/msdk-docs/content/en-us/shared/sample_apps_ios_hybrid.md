@@ -1,0 +1,3 @@
+- **AccountEditor**: Demonstrates how to synchronize offline data using the `mobilesync.js` library.
+- **MobileSyncExplorer**: Demonstrates how to synchronize offline data using the Mobile Sync plugin.
+- **NoteSync**: Demonstrates how to use non-REST APIs to retrieve Salesforce Notes.

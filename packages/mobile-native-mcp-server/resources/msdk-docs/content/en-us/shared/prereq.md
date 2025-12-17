@@ -1,0 +1,7 @@
+- Java JDK 17 or later—[www.oracle.com/downloads](http://www.oracle.com/downloads/).
+- Latest version of Android Studio —[developer.android.com/sdk](http://developer.android.com/sdk/).
+- Android SDK, including all APIs in the following range:
+  - Minimum API: Android Oreo (API 26)
+  - Target API: Android 14 (API 34)
+- Android SDK Tools
+- Android Virtual Device (AVD)

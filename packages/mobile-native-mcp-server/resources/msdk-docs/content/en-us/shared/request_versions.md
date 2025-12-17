@@ -1,0 +1,4 @@
+```swift
+
+request.requiresAuthentication = false
+```

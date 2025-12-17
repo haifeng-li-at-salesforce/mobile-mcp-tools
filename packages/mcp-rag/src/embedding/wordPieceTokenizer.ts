@@ -101,11 +101,7 @@ export class WordPieceTokenizer {
     const truncatedTokens = tokens.slice(0, maxTokens);
 
     // Add [CLS] at the start and [SEP] at the end
-    const inputIds = [
-      SPECIAL_TOKENS.CLS,
-      ...truncatedTokens,
-      SPECIAL_TOKENS.SEP,
-    ];
+    const inputIds = [SPECIAL_TOKENS.CLS, ...truncatedTokens, SPECIAL_TOKENS.SEP];
 
     // Create attention mask (1 for real tokens, 0 for padding)
     const attentionMask = new Array(inputIds.length).fill(1);
@@ -220,4 +216,3 @@ export function createDefaultTokenizer(maxSequenceLength: number = 512): WordPie
   const vocabPath = path.join(__dirname, '../../resources/model/vocab.txt');
   return new WordPieceTokenizer(vocabPath, maxSequenceLength);
 }
-

@@ -1,0 +1,2 @@
+- **MobileSyncExplorer** demonstrates the power of the native Mobile Sync library on iOS. It resides in Mobile SDK for iOS under `native/SampleApps/MobileSyncExplorer`.
+- **RestAPIExplorer** exercises all native REST API wrappers. It resides in Mobile SDK for iOS under `native/SampleApps/RestAPIExplorer`.
