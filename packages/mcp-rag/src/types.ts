@@ -52,16 +52,15 @@ export interface Section {
 /**
  * Represents a full document aggregated from its sections.
  */
-export interface Document {
-  /** Document filename */
-  doc: string;
-  /** Directory path to the document */
-  path: string;
-  /** Full document content (all sections merged) */
-  content: string;
-  /** Relevance score from search (highest section score) */
-  score?: number;
-}
+
+export const DocumentSchema = z.object( {
+  doc: z.string().describe('Document filename'),
+  path: z.string().describe('Directory path to the document'),
+  content: z.string().describe('Full document content (all sections merged)'),
+  score: z.number().optional().describe('Relevance score from search (highest section score)'),
+});
+
+export type Document = z.infer<typeof DocumentSchema>;
 
 /**
  * Search result mode determines the granularity of returned results.

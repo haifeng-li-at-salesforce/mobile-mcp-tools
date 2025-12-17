@@ -11,6 +11,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SFMobileNativeTemplateSelectionTool } from './tools/plan/sfmobile-native-template-selection/tool.js';
 import { UtilsXcodeAddFilesTool } from './tools/utils/utils-xcode-add-files/tool.js';
+import { SFMobileNativeDocRetrievalTool } from './tools/standalone/sfmobile-native-doc-retrieval/tool.js';
 
 import { SFMobileNativeDeploymentTool } from './tools/run/sfmobile-native-deployment/tool.js';
 import { SFMobileNativeBuildTool } from './tools/plan/sfmobile-native-build/tool.js';
@@ -40,24 +41,25 @@ const readOnlyAnnotations: ToolAnnotations = {
   openWorldHint: false,
 };
 
-const orchestratorAnnotations: ToolAnnotations = {
-  readOnlyHint: false,
-  destructiveHint: false,
-  idempotentHint: false,
-  openWorldHint: true,
-};
+// const orchestratorAnnotations: ToolAnnotations = {
+//   readOnlyHint: false,
+//   destructiveHint: false,
+//   idempotentHint: false,
+//   openWorldHint: true,
+// };
 
-// Initialize tools
-const orchestrator = new MobileNativeOrchestrator(server);
-const getInputTool = createSFMobileNativeGetInputTool(server);
-const inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
-const templateSelectionTool = new SFMobileNativeTemplateSelectionTool(server);
-const buildTool = new SFMobileNativeBuildTool(server);
-const buildRecoveryTool = new SFMobileNativeBuildRecoveryTool(server);
-const deploymentTool = new SFMobileNativeDeploymentTool(server);
-const xcodeAddFilesTool = new UtilsXcodeAddFilesTool(server);
-const completionTool = new SFMobileNativeCompletionTool(server);
-const failureTool = new SFMobileNativeFailureTool(server);
+// // Initialize tools
+// const orchestrator = new MobileNativeOrchestrator(server);
+// const getInputTool = createSFMobileNativeGetInputTool(server);
+// const inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
+// const templateSelectionTool = new SFMobileNativeTemplateSelectionTool(server);
+// const buildTool = new SFMobileNativeBuildTool(server);
+// const buildRecoveryTool = new SFMobileNativeBuildRecoveryTool(server);
+// const deploymentTool = new SFMobileNativeDeploymentTool(server);
+// const xcodeAddFilesTool = new UtilsXcodeAddFilesTool(server);
+// const completionTool = new SFMobileNativeCompletionTool(server);
+// const failureTool = new SFMobileNativeFailureTool(server);
+const docRetrievalTool = new SFMobileNativeDocRetrievalTool(server);
 
 // Register Magi tools
 registerMagiMcpTools(server);
@@ -66,18 +68,19 @@ registerMagiMcpTools(server);
 const mobileAppProjectPrompt = new MobileAppProjectPrompt(server);
 
 // Register orchestrator with specific annotations
-orchestrator.register(orchestratorAnnotations);
+//orchestrator.register(orchestratorAnnotations);
 
 // Register all other tools with read-only annotations
-getInputTool.register(readOnlyAnnotations);
-inputExtractionTool.register(readOnlyAnnotations);
-templateSelectionTool.register(readOnlyAnnotations);
-buildTool.register(readOnlyAnnotations);
-buildRecoveryTool.register(readOnlyAnnotations);
-deploymentTool.register(readOnlyAnnotations);
-xcodeAddFilesTool.register(readOnlyAnnotations);
-completionTool.register(readOnlyAnnotations);
-failureTool.register(readOnlyAnnotations);
+// getInputTool.register(readOnlyAnnotations);
+// inputExtractionTool.register(readOnlyAnnotations);
+// templateSelectionTool.register(readOnlyAnnotations);
+// buildTool.register(readOnlyAnnotations);
+// buildRecoveryTool.register(readOnlyAnnotations);
+// deploymentTool.register(readOnlyAnnotations);
+// xcodeAddFilesTool.register(readOnlyAnnotations);
+// completionTool.register(readOnlyAnnotations);
+// failureTool.register(readOnlyAnnotations);
+docRetrievalTool.register(readOnlyAnnotations);
 
 // Register prompts
 mobileAppProjectPrompt.register();
