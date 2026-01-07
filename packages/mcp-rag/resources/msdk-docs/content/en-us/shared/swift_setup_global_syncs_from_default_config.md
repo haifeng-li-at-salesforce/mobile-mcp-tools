@@ -1,3 +1,0 @@
-```swift
-      MobileSyncSDKManager.sharedManager.setupGlobalSyncsFromDefaultConfig()
-```

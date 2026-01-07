@@ -9,24 +9,24 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SFMobileNativeTemplateSelectionTool } from './tools/plan/sfmobile-native-template-selection/tool.js';
-import { UtilsXcodeAddFilesTool } from './tools/utils/utils-xcode-add-files/tool.js';
+// import { SFMobileNativeTemplateSelectionTool } from './tools/plan/sfmobile-native-template-selection/tool.js';
+// import { UtilsXcodeAddFilesTool } from './tools/utils/utils-xcode-add-files/tool.js';
 import { SFMobileNativeDocRetrievalTool } from './tools/standalone/sfmobile-native-doc-retrieval/tool.js';
 
-import { SFMobileNativeDeploymentTool } from './tools/run/sfmobile-native-deployment/tool.js';
-import { SFMobileNativeBuildTool } from './tools/plan/sfmobile-native-build/tool.js';
-import { SFMobileNativeBuildRecoveryTool } from './tools/plan/sfmobile-native-build-recovery/tool.js';
-import { MobileNativeOrchestrator } from './tools/workflow/sfmobile-native-project-manager/tool.js';
-import { SFMobileNativeCompletionTool } from './tools/workflow/sfmobile-native-completion/tool.js';
-import { SFMobileNativeFailureTool } from './tools/workflow/sfmobile-native-failure/tool.js';
+// import { SFMobileNativeDeploymentTool } from './tools/run/sfmobile-native-deployment/tool.js';
+// import { SFMobileNativeBuildTool } from './tools/plan/sfmobile-native-build/tool.js';
+// import { SFMobileNativeBuildRecoveryTool } from './tools/plan/sfmobile-native-build-recovery/tool.js';
+// import { MobileNativeOrchestrator } from './tools/workflow/sfmobile-native-project-manager/tool.js';
+// import { SFMobileNativeCompletionTool } from './tools/workflow/sfmobile-native-completion/tool.js';
+// import { SFMobileNativeFailureTool } from './tools/workflow/sfmobile-native-failure/tool.js';
 import { registerMagiMcpTools } from '@salesforce/workflow-magi';
 
 import packageJson from '../package.json' with { type: 'json' };
 const version = packageJson.version;
 import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { MobileAppProjectPrompt } from './prompts/index.js';
-import { createSFMobileNativeGetInputTool } from './tools/utils/sfmobile-native-get-input/factory.js';
-import { createSFMobileNativeInputExtractionTool } from './tools/utils/sfmobile-native-input-extraction/factory.js';
+// import { createSFMobileNativeGetInputTool } from './tools/utils/sfmobile-native-get-input/factory.js';
+// import { createSFMobileNativeInputExtractionTool } from './tools/utils/sfmobile-native-input-extraction/factory.js';
 
 const server = new McpServer({
   name: 'sfdc-mobile-native-mcp-server',

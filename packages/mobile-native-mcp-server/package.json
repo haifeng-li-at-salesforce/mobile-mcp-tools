@@ -5,7 +5,8 @@
   "files": [
     "dist",
     "templates",
-    "README.md"
+    "README.md",
+    "msdk-docs-index.json"
   ],
   "description": "Salesforce Mobile Native MCP Server",
   "license": "MIT",

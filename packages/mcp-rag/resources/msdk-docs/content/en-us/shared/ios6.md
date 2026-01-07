@@ -1,3 +1,0 @@
-- iOS SDK:
-  - Deployment target: iOS 15
-  - Base SDK: iOS 16

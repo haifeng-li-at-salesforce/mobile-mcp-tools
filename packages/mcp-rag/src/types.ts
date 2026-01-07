@@ -53,7 +53,7 @@ export interface Section {
  * Represents a full document aggregated from its sections.
  */
 
-export const DocumentSchema = z.object( {
+export const DocumentSchema = z.object({
   doc: z.string().describe('Document filename'),
   path: z.string().describe('Directory path to the document'),
   content: z.string().describe('Full document content (all sections merged)'),
@@ -148,11 +148,11 @@ export interface IndexMetadata {
  * Configuration options for the RAG index.
  */
 export interface RagIndexOptions {
-  /** Target chunk size in tokens (default: 400) */
+  /** Target chunk size in tokens (default: 350) */
   chunkSize?: number;
   /** Overlap between chunks in tokens (default: 50) */
   chunkOverlap?: number;
-  /** Path to TFLite model file (default: bundled all-MiniLM-L6-v2-quant.tflite) */
+  /** Path to ONNX model file (default: bundled model_int8.onnx) */
   modelPath?: string;
   /** Path to vocabulary file (default: bundled vocab.txt) */
   vocabPath?: string;
@@ -186,7 +186,7 @@ export const SearchOptionsSchema = z.object({
 });
 
 export const RagIndexOptionsSchema = z.object({
-  chunkSize: z.number().int().positive().optional().default(400),
+  chunkSize: z.number().int().positive().optional().default(350),
   chunkOverlap: z.number().int().nonnegative().optional().default(50),
   modelPath: z.string().optional(),
   vocabPath: z.string().optional(),

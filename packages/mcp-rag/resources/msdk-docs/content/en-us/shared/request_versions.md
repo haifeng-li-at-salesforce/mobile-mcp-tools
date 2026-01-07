@@ -1,4 +1,0 @@
-```swift
-
-request.requiresAuthentication = false
-```
