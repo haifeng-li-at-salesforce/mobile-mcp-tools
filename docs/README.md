@@ -9,6 +9,11 @@ The documentation is organized in the `/docs` directory:
 - **`/docs/`** - Project documentation including:
   - [Project Overview](./1_project_overview.md) - High-level project goals and architecture
   - [Mobile Native App Generation](./5_mobile_native_app_generation.md) - Comprehensive MCP server design for native app generation
+  - [Xcode Add Files Design](./7_utils_xcode_add_files_design.md) - Design for Xcode file integration utility
+  - [PRD Workflow Architecture](./8_prd_workflow_architecture.md) - Product requirements document workflow
+  - [MCP Workflow Engine Extraction](./9_mcp_workflow_engine_extraction/) - Design and implementation for reusable workflow engine
+  - [Execution Architecture](./10_execution_architecture.md) - Build and deployment execution architecture
+  - [Orchestrator Input Optimization](./11_orchestrator_input_optimization.md) - Direct user input collection and structured input schemas
   - [README](./README.md) - Documentation index and navigation
 
 ## Getting Started with Documentation
