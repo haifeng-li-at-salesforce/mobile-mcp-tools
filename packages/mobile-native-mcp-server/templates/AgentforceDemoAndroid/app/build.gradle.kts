@@ -53,6 +53,10 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
+    dexOptions {
+        javaMaxHeapSize = "4g"
+    }
+
     packaging {
         resources {
             excludes += setOf(
@@ -70,7 +74,7 @@ dependencies {
     api("com.salesforce.android.agentforcesdk:agentforce-sdk:14.0.0")
 
     // Core Library Desugaring
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.5")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // Kotlin Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")

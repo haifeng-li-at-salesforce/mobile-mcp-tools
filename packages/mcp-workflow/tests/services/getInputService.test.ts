@@ -84,6 +84,28 @@ describe('GetInputService', () => {
       ).toEqual(unfulfilledProperties);
     });
 
+    it('should set directUserInputCollection flag to true', () => {
+      const userResponse = 'test response';
+      mockToolExecutor.setResult(toolId, {
+        userUtterance: userResponse,
+      });
+
+      const unfulfilledProperties = [
+        {
+          propertyName: 'platform',
+          friendlyName: 'platform',
+          description: 'Target platform',
+        },
+      ];
+
+      service.getInput(unfulfilledProperties);
+
+      const callHistory = mockToolExecutor.getCallHistory();
+      expect(callHistory.length).toBe(1);
+      const call = callHistory[0];
+      expect(call.directUserInputCollection).toBe(true);
+    });
+
     it('should log debug message with properties', () => {
       mockToolExecutor.setResult(toolId, {
         userUtterance: 'test',

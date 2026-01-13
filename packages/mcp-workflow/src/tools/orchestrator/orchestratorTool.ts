@@ -16,6 +16,10 @@ import {
   WORKFLOW_PROPERTY_NAMES,
   WorkflowStateData,
 } from '../../common/metadata.js';
+import {
+  GET_INPUT_WORKFLOW_INPUT_SCHEMA,
+  GET_INPUT_WORKFLOW_RESULT_SCHEMA,
+} from '../utilities/getInput/metadata.js';
 import { WorkflowStateManager } from '../../checkpointing/workflowStateManager.js';
 import { OrchestratorConfig } from './config.js';
 import {
@@ -166,13 +170,16 @@ export class OrchestratorTool extends AbstractTool<OrchestratorToolMetadata> {
 
       this.logger.info('Invoking next MCP tool', {
         toolName: mcpToolInvocationData.llmMetadata?.name,
+        directUserInputCollection: mcpToolInvocationData.directUserInputCollection,
       });
 
-      // Create orchestration prompt
-      const orchestrationPrompt = this.createOrchestrationPrompt(
-        mcpToolInvocationData,
-        workflowStateData
-      );
+      // Create orchestration prompt - use direct user input collection if flagged
+      const orchestrationPrompt = mcpToolInvocationData.directUserInputCollection
+        ? this.createDirectUserInputCollectionPrompt(
+            mcpToolInvocationData as MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>,
+            workflowStateData
+          )
+        : this.createOrchestrationPrompt(mcpToolInvocationData, workflowStateData);
 
       // Save the workflow state.
       await this.stateManager.saveCheckpointerState(checkpointer);
@@ -249,5 +256,116 @@ specified by the next MCP server tool invocation.
 The MCP server tool you invoke will respond with its output, along with further
 instructions for continuing the workflow.
 `;
+  }
+
+  /**
+   * Create a direct user input collection prompt.
+   *
+   * This method generates a prompt that instructs the LLM to gather user input
+   * directly, without requiring an intermediate tool call to a separate get-input tool.
+   * The LLM should then return the user's response back to this orchestrator.
+   *
+   * @param mcpToolInvocationData - The tool invocation data containing properties requiring input
+   * @param workflowStateData - The workflow state data to round-trip back to the orchestrator
+   * @returns A prompt instructing the LLM to gather user input and return to the orchestrator
+   */
+  private createDirectUserInputCollectionPrompt(
+    mcpToolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>,
+    workflowStateData: WorkflowStateData
+  ): string {
+    const propertiesDescription = this.generatePropertiesDescription(mcpToolInvocationData);
+    const resultSchema = JSON.stringify(zodToJsonSchema(GET_INPUT_WORKFLOW_RESULT_SCHEMA));
+
+    return `
+# ROLE
+
+You are an input gathering assistant, responsible for explicitly requesting and gathering the
+user's input for a set of unfulfilled properties.
+
+# TASK
+
+Your job is to provide a prompt to the user that outlines the details for a set of properties
+that require the user's input. The prompt should be polite and conversational.
+
+# CONTEXT
+
+Here is the list of properties that require the user's input, along with their describing
+metadata:
+
+${propertiesDescription}
+
+# INSTRUCTIONS
+
+1. Based on the properties listed in "CONTEXT", generate a prompt that outlines the details
+   for each property.
+2. Present the prompt to the user and instruct the user to provide their input.
+3. **IMPORTANT:** YOU MUST NOW WAIT for the user to provide a follow-up response to your prompt.
+   1. You CANNOT PROCEED FROM THIS STEP until the user has provided THEIR OWN INPUT VALUE.
+4. Follow the "Post-Input-Collection" instructions below, to return the user's
+   response to the orchestrator for further processing.
+
+# Post-Input-Collection Instructions
+
+## 1. Format the results from the user's input
+
+The user's response data MUST be wrapped in a \`userUtterance\` property. The structure should be:
+
+\`\`\`json
+{
+  "userUtterance": <the user's response data here>
+}
+\`\`\`
+
+For example, if the user provides values for properties like \`platform\` and \`projectName\`, the formatted result should be:
+
+\`\`\`json
+{
+  "userUtterance": {
+    "platform": "iOS",
+    "projectName": "MyApp"
+  }
+}
+\`\`\`
+
+**JSON Schema for reference:**
+\`\`\`json
+${resultSchema}
+\`\`\`
+
+## 2. Invoke the orchestrator tool to continue the workflow
+
+You MUST initiate the following actions to proceed with the in-progress workflow you are
+participating in.
+
+### 2.1. Invoke the \`${this.toolMetadata.toolId}\` tool
+
+Invoke the \`${this.toolMetadata.toolId}\` tool to continue the workflow.
+
+### 2.2 Provide input values to the tool
+
+Provide the following input values to the \`${this.toolMetadata.toolId}\` tool:
+
+- \`${WORKFLOW_PROPERTY_NAMES.userInput}\`: The formatted result from step 1 (an object with a \`userUtterance\` property containing the user's response data).
+- \`${WORKFLOW_PROPERTY_NAMES.workflowStateData}\`: ${JSON.stringify(workflowStateData)}
+
+This will continue the workflow orchestration process.
+`;
+  }
+
+  /**
+   * Creates a "prompt-friendly" description of the properties requiring input.
+   *
+   * @param mcpToolInvocationData - The tool invocation data containing properties requiring input
+   * @returns A formatted description of the properties requiring input
+   */
+  private generatePropertiesDescription(
+    mcpToolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>
+  ): string {
+    return mcpToolInvocationData.input.propertiesRequiringInput
+      .map(
+        property =>
+          `- Property Name: ${property.propertyName}\n- Friendly Name: ${property.friendlyName}\n- Description: ${property.description}`
+      )
+      .join('\n\n');
   }
 }

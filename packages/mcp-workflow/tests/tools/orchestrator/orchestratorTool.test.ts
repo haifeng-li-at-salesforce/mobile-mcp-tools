@@ -14,6 +14,7 @@ import { WorkflowStateManager } from '../../../src/checkpointing/workflowStateMa
 import { MockLogger } from '../../utils/MockLogger.js';
 import { MockFileSystem } from '../../utils/MockFileSystem.js';
 import { MCPToolInvocationData } from '../../../src/common/metadata.js';
+import { GET_INPUT_WORKFLOW_INPUT_SCHEMA } from '../../../src/tools/utilities/getInput/metadata.js';
 
 // Create a simple test state for testing
 const TestState = Annotation.Root({
@@ -452,6 +453,142 @@ describe('OrchestratorTool', () => {
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
       // Should reference the custom tool ID in the prompt
       expect(output.orchestrationInstructionsPrompt).toContain(customToolId);
+    });
+
+    it('should generate direct user input collection prompt when directUserInputCollection flag is set', async () => {
+      const orchestratorToolId = 'test-direct-input-orchestrator';
+
+      const workflow = new StateGraph(TestState)
+        .addNode('getUserInput', (_state: State) => {
+          // Create interrupt data with directUserInputCollection flag
+          const mcpToolData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA> = {
+            llmMetadata: {
+              name: 'test-get-input',
+              description: 'Get user input',
+              inputSchema: GET_INPUT_WORKFLOW_INPUT_SCHEMA,
+            },
+            input: {
+              propertiesRequiringInput: [
+                {
+                  propertyName: 'platform',
+                  friendlyName: 'Platform',
+                  description: 'The target mobile platform (iOS or Android)',
+                },
+                {
+                  propertyName: 'projectName',
+                  friendlyName: 'Project Name',
+                  description: 'The name of the mobile project',
+                },
+              ],
+            },
+            directUserInputCollection: true,
+          };
+          return interrupt(mcpToolData);
+        })
+        .addEdge(START, 'getUserInput')
+        .addEdge('getUserInput', END);
+
+      const config: OrchestratorConfig = {
+        toolId: orchestratorToolId,
+        title: 'Direct Input Test',
+        description: 'Tests direct user input collection',
+        workflow,
+        stateManager: new WorkflowStateManager({ environment: 'test' }),
+        logger: mockLogger,
+      };
+
+      const orchestrator = new OrchestratorTool(server, config);
+
+      const result = await orchestrator.handleRequest({
+        userInput: {},
+        workflowStateData: { thread_id: '' },
+      });
+
+      expect(result.structuredContent).toBeDefined();
+      const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
+      const prompt = output.orchestrationInstructionsPrompt;
+
+      // Should contain user input gathering instructions
+      expect(prompt).toContain('# ROLE');
+      expect(prompt).toContain('input gathering assistant');
+      expect(prompt).toContain('# TASK');
+      expect(prompt).toContain('# CONTEXT');
+      expect(prompt).toContain('# INSTRUCTIONS');
+
+      // Should contain the properties requiring input
+      expect(prompt).toContain('platform');
+      expect(prompt).toContain('Platform');
+      expect(prompt).toContain('The target mobile platform');
+      expect(prompt).toContain('projectName');
+      expect(prompt).toContain('Project Name');
+      expect(prompt).toContain('The name of the mobile project');
+
+      // Should instruct to wait for user input
+      expect(prompt).toContain('YOU MUST NOW WAIT for the user');
+
+      // Should contain post-input-collection instructions
+      expect(prompt).toContain('# Post-Input-Collection Instructions');
+      expect(prompt).toContain('userUtterance');
+      expect(prompt).toContain(orchestratorToolId);
+      expect(prompt).toContain('workflowStateData');
+
+      // Should NOT contain regular orchestration prompt content
+      expect(prompt).not.toContain('# Your Task');
+      expect(prompt).not.toContain('Invoke the following MCP server tool');
+    });
+
+    it('should use regular orchestration prompt when directUserInputCollection flag is not set', async () => {
+      const workflow = new StateGraph(TestState)
+        .addNode('regularInterrupt', (_state: State) => {
+          // Create interrupt data WITHOUT directUserInputCollection flag
+          const mcpToolData: MCPToolInvocationData<z.ZodObject<z.ZodRawShape>> = {
+            llmMetadata: {
+              name: 'regular-tool',
+              description: 'A regular MCP tool',
+              inputSchema: z.object({
+                someParam: z.string(),
+                workflowStateData: z.object({ thread_id: z.string() }),
+              }),
+            },
+            input: {
+              someParam: 'value',
+            },
+            // directUserInputCollection is NOT set
+          };
+          return interrupt(mcpToolData);
+        })
+        .addEdge(START, 'regularInterrupt')
+        .addEdge('regularInterrupt', END);
+
+      const config: OrchestratorConfig = {
+        toolId: 'test-regular-orchestrator',
+        title: 'Regular Orchestrator',
+        description: 'Tests regular orchestration prompt',
+        workflow,
+        stateManager: new WorkflowStateManager({ environment: 'test' }),
+        logger: mockLogger,
+      };
+
+      const orchestrator = new OrchestratorTool(server, config);
+
+      const result = await orchestrator.handleRequest({
+        userInput: {},
+        workflowStateData: { thread_id: '' },
+      });
+
+      expect(result.structuredContent).toBeDefined();
+      const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
+      const prompt = output.orchestrationInstructionsPrompt;
+
+      // Should contain regular orchestration prompt content
+      expect(prompt).toContain('# Your Role');
+      expect(prompt).toContain('# Your Task');
+      expect(prompt).toContain('Invoke the following MCP server tool');
+      expect(prompt).toContain('regular-tool');
+
+      // Should NOT contain direct input collection content
+      expect(prompt).not.toContain('input gathering assistant');
+      expect(prompt).not.toContain('# Post-Input-Collection Instructions');
     });
 
     it('should resume interrupted workflow with user input (full interrupt->resume cycle)', async () => {

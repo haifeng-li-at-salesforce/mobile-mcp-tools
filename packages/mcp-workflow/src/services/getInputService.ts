@@ -70,7 +70,9 @@ export class GetInputService extends AbstractService implements GetInputServiceP
     });
 
     const metadata = createGetInputMetadata(this.toolId);
-    // Create tool invocation data
+    // Create tool invocation data with directUserInputCollection flag
+    // This tells the orchestrator to handle user input collection directly
+    // instead of delegating to a separate get-input tool
     const toolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA> = {
       llmMetadata: {
         name: metadata.toolId,
@@ -80,6 +82,7 @@ export class GetInputService extends AbstractService implements GetInputServiceP
       input: {
         propertiesRequiringInput: unfulfilledProperties,
       },
+      directUserInputCollection: true,
     };
 
     // Execute tool with logging and validation

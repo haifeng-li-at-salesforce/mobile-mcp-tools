@@ -781,6 +781,12 @@ export interface MCPToolInvocationData<TWorkflowInputSchema extends z.ZodObject<
     inputSchema: TWorkflowInputSchema;
   };
   input: Omit<z.infer<TWorkflowInputSchema>, 'workflowStateData'>;
+  /**
+   * Flag indicating the orchestrator should handle user input collection directly
+   * instead of delegating to a separate get-input tool.
+   * When true, the orchestrator generates a user input collection prompt directly.
+   */
+  directUserInputCollection?: boolean;
 }
 ```
 
@@ -796,6 +802,60 @@ While the orchestrator and base classes provide the workflow infrastructure, man
 - Extracting structured data from unstructured user utterances
 
 Rather than force every consumer to implement these common patterns, we provide them as part of the framework.
+
+##### 5.0 Direct User Input Collection (Orchestrator-Handled)
+
+**Purpose**: Allows the orchestrator to handle user input collection directly, eliminating the need for an intermediate tool call.
+
+**Background**: The standard workflow for gathering user input involves two tool calls:
+1. The workflow interrupts and instructs the LLM to invoke a get-input tool
+2. The get-input tool returns a prompt, and the LLM gathers user input
+3. The LLM returns the result to the orchestrator
+
+This adds latency and complexity. The **direct user input collection** feature streamlines this by having the orchestrator generate the user input prompt directly.
+
+**How It Works**:
+
+When a workflow node needs user input, it creates an interrupt with the `directUserInputCollection` flag set to `true`:
+
+```typescript
+const mcpToolData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA> = {
+  llmMetadata: {
+    name: 'get-input-tool',
+    description: 'Get user input',
+    inputSchema: GET_INPUT_WORKFLOW_INPUT_SCHEMA,
+  },
+  input: {
+    propertiesRequiringInput: [
+      { propertyName: 'platform', friendlyName: 'Platform', description: 'Target platform' },
+    ],
+  },
+  directUserInputCollection: true, // Flag for direct handling
+};
+return interrupt(mcpToolData);
+```
+
+When the orchestrator detects this flag, instead of instructing the LLM to call a separate get-input tool, it generates a user input collection prompt directly. The LLM then:
+1. Presents the prompt to the user
+2. Waits for user input
+3. Returns the result (conforming to `{ userUtterance: ... }` schema) directly to the orchestrator
+
+**Flow Comparison**:
+
+```
+Standard Flow (without flag):
+  GetUserInputNode → interrupt → Orchestrator → LLM calls get-input tool → Tool returns prompt → LLM gathers input → Returns to Orchestrator
+
+Direct Flow (with flag):
+  GetUserInputNode → interrupt (with flag) → Orchestrator generates prompt directly → LLM gathers input → Returns to Orchestrator
+```
+
+**Benefits**:
+- Reduced latency (eliminates one tool call round-trip)
+- Simpler flow for common user input scenarios
+- Same result schema (`{ userUtterance: ... }`) preserved for compatibility
+
+**Implementation**: The `GetInputService` automatically sets this flag, so existing `GetUserInputNode` usage benefits without code changes.
 
 ##### 5.1 Get Input Tool
 

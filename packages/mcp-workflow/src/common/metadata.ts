@@ -50,6 +50,12 @@ export interface MCPToolInvocationData<TWorkflowInputSchema extends z.ZodObject<
   };
   /** Input parameters for the tool invocation - typed to business logic schema only */
   input: Omit<z.infer<TWorkflowInputSchema>, 'workflowStateData'>;
+  /**
+   * Flag indicating the orchestrator should handle user input collection directly
+   * instead of delegating to a separate get-input tool.
+   * When true, the orchestrator generates a user input collection prompt directly.
+   */
+  directUserInputCollection?: boolean;
 }
 
 /**
