@@ -37,6 +37,9 @@ export const GET_INPUT_WORKFLOW_RESULT_SCHEMA = z.object({
 
 export type GetInputWorkflowInput = z.infer<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>;
 
+/** Input type for guidance generation (excludes workflowStateData) */
+export type GetInputGuidanceInput = Omit<GetInputWorkflowInput, 'workflowStateData'>;
+
 /**
  * Get Input Tool Metadata Type
  */
@@ -44,6 +47,57 @@ export type GetInputToolMetadata = WorkflowToolMetadata<
   typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA,
   typeof GET_INPUT_WORKFLOW_RESULT_SCHEMA
 >;
+
+/**
+ * Creates a "prompt-friendly" description of the properties requiring input.
+ * Helper function used by generateTaskGuidance.
+ *
+ * @param properties - Array of properties requiring user input
+ * @returns A formatted description of the properties
+ */
+function generatePropertiesDescription(
+  properties: z.infer<typeof GET_INPUT_PROPERTY_SCHEMA>[]
+): string {
+  return properties
+    .map(
+      property =>
+        `- Property Name: ${property.propertyName}\n- Friendly Name: ${property.friendlyName}\n- Description: ${property.description}`
+    )
+    .join('\n\n');
+}
+
+/**
+ * Generates the task guidance for user input collection.
+ * This is the single source of truth for the input gathering prompt.
+ *
+ * @param input - The input containing properties requiring user input
+ * @returns The guidance prompt string
+ */
+function generateGetInputTaskGuidance(input: Record<string, unknown>): string {
+  const typedInput = input as GetInputGuidanceInput;
+  return `
+# ROLE
+You are an input gathering tool, responsible for explicitly requesting and gathering the
+user's input for a set of unfulfilled properties.
+
+# TASK
+Your job is to provide a prompt to the user that outlines the details for a set of properties
+that require the user's input. The prompt should be polite and conversational.
+
+# CONTEXT
+Here is the list of properties that require the user's input, along with their describing
+metadata:
+
+${generatePropertiesDescription(typedInput.propertiesRequiringInput)}
+
+# INSTRUCTIONS
+1. Based on the properties listed in "CONTEXT", generate a prompt that outlines the details
+   for each property.
+2. Present the prompt to the user and instruct the user to provide their input.
+3. **IMPORTANT:** YOU MUST NOW WAIT for the user to provide a follow-up response to your prompt.
+    1. You CANNOT PROCEED FROM THIS STEP until the user has provided THEIR OWN INPUT VALUE.
+`;
+}
 
 /**
  * Factory function to create Get Input Tool metadata with a dynamic tool ID
@@ -59,5 +113,6 @@ export function createGetInputMetadata(toolId: string): GetInputToolMetadata {
     inputSchema: GET_INPUT_WORKFLOW_INPUT_SCHEMA,
     outputSchema: MCP_WORKFLOW_TOOL_OUTPUT_SCHEMA,
     resultSchema: GET_INPUT_WORKFLOW_RESULT_SCHEMA,
+    generateTaskGuidance: generateGetInputTaskGuidance,
   } as const;
 }

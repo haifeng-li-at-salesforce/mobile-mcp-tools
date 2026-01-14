@@ -571,8 +571,10 @@ describe('GetInputTool', () => {
       // Create a tool that will throw an error
       const errorTool = new GetInputTool(mockServer, TEST_TOOL_ID, TEST_ORCHESTRATOR_ID);
 
-      // Override the private method to throw
-      errorTool['generatePromptForInputGuidance'] = () => {
+      // Override the metadata's generateTaskGuidance to throw
+      (
+        errorTool as unknown as { toolMetadata: { generateTaskGuidance: () => string } }
+      ).toolMetadata.generateTaskGuidance = () => {
         throw new Error('Test error');
       };
 
@@ -597,7 +599,10 @@ describe('GetInputTool', () => {
     it('should handle non-Error exceptions', async () => {
       const errorTool = new GetInputTool(mockServer, TEST_TOOL_ID, TEST_ORCHESTRATOR_ID);
 
-      errorTool['generatePromptForInputGuidance'] = () => {
+      // Override the metadata's generateTaskGuidance to throw a string
+      (
+        errorTool as unknown as { toolMetadata: { generateTaskGuidance: () => string } }
+      ).toolMetadata.generateTaskGuidance = () => {
         throw 'string error';
       };
 

@@ -12,14 +12,13 @@ import { Command } from '@langchain/langgraph';
 import { createWorkflowLogger } from '../../logging/logger.js';
 import { AbstractTool } from '../base/abstractTool.js';
 import {
+  InterruptData,
   MCPToolInvocationData,
+  NodeGuidanceData,
+  isNodeGuidanceData,
   WORKFLOW_PROPERTY_NAMES,
   WorkflowStateData,
 } from '../../common/metadata.js';
-import {
-  GET_INPUT_WORKFLOW_INPUT_SCHEMA,
-  GET_INPUT_WORKFLOW_RESULT_SCHEMA,
-} from '../utilities/getInput/metadata.js';
 import { WorkflowStateManager } from '../../checkpointing/workflowStateManager.js';
 import { OrchestratorConfig } from './config.js';
 import {
@@ -154,32 +153,33 @@ export class OrchestratorTool extends AbstractTool<OrchestratorToolMetadata> {
     graphState = await compiledWorkflow.getState(threadConfig);
     if (graphState.next.length > 0) {
       // There are more nodes to execute.
-      const mcpToolInvocationData: MCPToolInvocationData<z.ZodObject<z.ZodRawShape>> | undefined =
+      const interruptData: InterruptData<z.ZodObject<z.ZodRawShape>> | undefined =
         '__interrupt__' in result
           ? (
               result.__interrupt__ as Array<{
-                value: MCPToolInvocationData<z.ZodObject<z.ZodRawShape>>;
+                value: InterruptData<z.ZodObject<z.ZodRawShape>>;
               }>
             )[0].value
           : undefined;
 
-      if (!mcpToolInvocationData) {
-        this.logger.error('Workflow completed without expected MCP tool invocation.');
+      if (!interruptData) {
+        this.logger.error('Workflow completed without expected interrupt data.');
         throw new Error('FATAL: Unexpected workflow state without an interrupt');
       }
 
-      this.logger.info('Invoking next MCP tool', {
-        toolName: mcpToolInvocationData.llmMetadata?.name,
-        directUserInputCollection: mcpToolInvocationData.directUserInputCollection,
-      });
-
-      // Create orchestration prompt - use direct user input collection if flagged
-      const orchestrationPrompt = mcpToolInvocationData.directUserInputCollection
-        ? this.createDirectUserInputCollectionPrompt(
-            mcpToolInvocationData as MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>,
-            workflowStateData
-          )
-        : this.createOrchestrationPrompt(mcpToolInvocationData, workflowStateData);
+      // Determine mode and create appropriate prompt
+      let orchestrationPrompt: string;
+      if (isNodeGuidanceData(interruptData)) {
+        this.logger.info('Using direct guidance mode', {
+          nodeId: interruptData.nodeId,
+        });
+        orchestrationPrompt = this.createDirectGuidancePrompt(interruptData, workflowStateData);
+      } else {
+        this.logger.info('Using delegate mode', {
+          toolName: interruptData.llmMetadata?.name,
+        });
+        orchestrationPrompt = this.createOrchestrationPrompt(interruptData, workflowStateData);
+      }
 
       // Save the workflow state.
       await this.stateManager.saveCheckpointerState(checkpointer);
@@ -211,6 +211,7 @@ export class OrchestratorTool extends AbstractTool<OrchestratorToolMetadata> {
 
   /**
    * Create orchestration prompt for LLM with embedded tool invocation data and workflow state
+   * Used in delegate mode - instructs LLM to call a separate MCP tool.
    */
   private createOrchestrationPrompt(
     mcpToolInvocationData: MCPToolInvocationData<z.ZodObject<z.ZodRawShape>>,
@@ -231,7 +232,7 @@ Invoke the following MCP server tool:
 **MCP Server Tool Name**: ${mcpToolInvocationData.llmMetadata?.name}
 **MCP Server Tool Input Schema**:
 \`\`\`json
-${JSON.stringify(zodToJsonSchema(mcpToolInvocationData.llmMetadata?.inputSchema))}
+${JSON.stringify(zodToJsonSchema(mcpToolInvocationData.llmMetadata.inputSchema))}
 \`\`\`
 **MCP Server Tool Input Values**:
 \`\`\`json
@@ -259,113 +260,78 @@ instructions for continuing the workflow.
   }
 
   /**
-   * Create a direct user input collection prompt.
+   * Create a direct guidance prompt for the LLM.
+   * Used in direct guidance mode - provides guidance inline without an intermediate tool call.
    *
-   * This method generates a prompt that instructs the LLM to gather user input
-   * directly, without requiring an intermediate tool call to a separate get-input tool.
-   * The LLM should then return the user's response back to this orchestrator.
-   *
-   * @param mcpToolInvocationData - The tool invocation data containing properties requiring input
+   * @param nodeGuidanceData - The node guidance data containing task guidance and schemas
    * @param workflowStateData - The workflow state data to round-trip back to the orchestrator
-   * @returns A prompt instructing the LLM to gather user input and return to the orchestrator
+   * @returns A prompt with the task guidance and post-task instructions
    */
-  private createDirectUserInputCollectionPrompt(
-    mcpToolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>,
+  private createDirectGuidancePrompt(
+    nodeGuidanceData: NodeGuidanceData<z.ZodObject<z.ZodRawShape>>,
     workflowStateData: WorkflowStateData
   ): string {
-    const propertiesDescription = this.generatePropertiesDescription(mcpToolInvocationData);
-    const resultSchema = JSON.stringify(zodToJsonSchema(GET_INPUT_WORKFLOW_RESULT_SCHEMA));
+    const inputSchemaJson = JSON.stringify(zodToJsonSchema(nodeGuidanceData.inputSchema), null, 2);
+    const resultSchemaJson = JSON.stringify(
+      zodToJsonSchema(nodeGuidanceData.resultSchema),
+      null,
+      2
+    );
+    const inputDataJson = JSON.stringify(nodeGuidanceData.input, null, 2);
+
+    // Build example section if provided
+    const exampleSection = nodeGuidanceData.exampleOutput
+      ? `
+For example, a properly formatted result should look like:
+
+\`\`\`json
+${nodeGuidanceData.exampleOutput}
+\`\`\`
+`
+      : '';
 
     return `
 # ROLE
 
-You are an input gathering assistant, responsible for explicitly requesting and gathering the
-user's input for a set of unfulfilled properties.
+You are participating in a workflow orchestration process. The orchestrator is providing
+you with direct guidance for the current task.
 
-# TASK
+# TASK GUIDANCE
 
-Your job is to provide a prompt to the user that outlines the details for a set of properties
-that require the user's input. The prompt should be polite and conversational.
+${nodeGuidanceData.taskGuidance}
 
-# CONTEXT
+# INPUT SCHEMA (for reference)
 
-Here is the list of properties that require the user's input, along with their describing
-metadata:
-
-${propertiesDescription}
-
-# INSTRUCTIONS
-
-1. Based on the properties listed in "CONTEXT", generate a prompt that outlines the details
-   for each property.
-2. Present the prompt to the user and instruct the user to provide their input.
-3. **IMPORTANT:** YOU MUST NOW WAIT for the user to provide a follow-up response to your prompt.
-   1. You CANNOT PROCEED FROM THIS STEP until the user has provided THEIR OWN INPUT VALUE.
-4. Follow the "Post-Input-Collection" instructions below, to return the user's
-   response to the orchestrator for further processing.
-
-# Post-Input-Collection Instructions
-
-## 1. Format the results from the user's input
-
-The user's response data MUST be wrapped in a \`userUtterance\` property. The structure should be:
+The following schema defines the structure of the input data:
 
 \`\`\`json
-{
-  "userUtterance": <the user's response data here>
-}
+${inputSchemaJson}
 \`\`\`
 
-For example, if the user provides values for properties like \`platform\` and \`projectName\`, the formatted result should be:
+# INPUT DATA
 
 \`\`\`json
-{
-  "userUtterance": {
-    "platform": "iOS",
-    "projectName": "MyApp"
-  }
-}
+${inputDataJson}
 \`\`\`
 
-**JSON Schema for reference:**
-\`\`\`json
-${resultSchema}
-\`\`\`
+# POST-TASK INSTRUCTIONS
 
-## 2. Invoke the orchestrator tool to continue the workflow
-
-You MUST initiate the following actions to proceed with the in-progress workflow you are
-participating in.
-
-### 2.1. Invoke the \`${this.toolMetadata.toolId}\` tool
-
-Invoke the \`${this.toolMetadata.toolId}\` tool to continue the workflow.
-
-### 2.2 Provide input values to the tool
+After completing the task described above, you MUST return your result to the orchestrator
+by invoking the \`${this.toolMetadata.toolId}\` tool.
 
 Provide the following input values to the \`${this.toolMetadata.toolId}\` tool:
 
-- \`${WORKFLOW_PROPERTY_NAMES.userInput}\`: The formatted result from step 1 (an object with a \`userUtterance\` property containing the user's response data).
+- \`${WORKFLOW_PROPERTY_NAMES.userInput}\`: Your formatted result (see OUTPUT FORMAT below).
 - \`${WORKFLOW_PROPERTY_NAMES.workflowStateData}\`: ${JSON.stringify(workflowStateData)}
 
-This will continue the workflow orchestration process.
-`;
-  }
+# OUTPUT FORMAT
 
-  /**
-   * Creates a "prompt-friendly" description of the properties requiring input.
-   *
-   * @param mcpToolInvocationData - The tool invocation data containing properties requiring input
-   * @returns A formatted description of the properties requiring input
-   */
-  private generatePropertiesDescription(
-    mcpToolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA>
-  ): string {
-    return mcpToolInvocationData.input.propertiesRequiringInput
-      .map(
-        property =>
-          `- Property Name: ${property.propertyName}\n- Friendly Name: ${property.friendlyName}\n- Description: ${property.description}`
-      )
-      .join('\n\n');
+**IMPORTANT:** Your \`${WORKFLOW_PROPERTY_NAMES.userInput}\` value MUST conform to the following JSON schema:
+
+\`\`\`json
+${resultSchemaJson}
+\`\`\`
+${exampleSection}
+`;
   }
 }

@@ -13,7 +13,7 @@ import {
   GET_INPUT_WORKFLOW_RESULT_SCHEMA,
 } from '../tools/utilities/index.js';
 import { Logger } from '../logging/logger.js';
-import { MCPToolInvocationData } from '../common/metadata.js';
+import { NodeGuidanceData } from '../common/metadata.js';
 
 export interface GetInputProperty {
   /** Property name to be collected */
@@ -46,8 +46,9 @@ export interface GetInputServiceProvider {
 /**
  * Service for getting user input for a given question.
  *
- * This service extends AbstractService to leverage common tool execution
- * patterns including standardized logging and result validation.
+ * This service uses direct guidance mode (NodeGuidanceData) to have the orchestrator
+ * generate user input collection prompts directly, eliminating the need for an
+ * intermediate tool call.
  */
 export class GetInputService extends AbstractService implements GetInputServiceProvider {
   /**
@@ -70,24 +71,38 @@ export class GetInputService extends AbstractService implements GetInputServiceP
     });
 
     const metadata = createGetInputMetadata(this.toolId);
-    // Create tool invocation data with directUserInputCollection flag
-    // This tells the orchestrator to handle user input collection directly
-    // instead of delegating to a separate get-input tool
-    const toolInvocationData: MCPToolInvocationData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA> = {
-      llmMetadata: {
-        name: metadata.toolId,
-        description: metadata.description,
-        inputSchema: metadata.inputSchema,
+    const input = { propertiesRequiringInput: unfulfilledProperties };
+
+    // Build a concrete example based on the actual properties being requested
+    const exampleProperties = unfulfilledProperties.reduce(
+      (acc, prop) => {
+        acc[prop.propertyName] = `<user's ${prop.friendlyName} value>`;
+        return acc;
       },
-      input: {
-        propertiesRequiringInput: unfulfilledProperties,
-      },
-      directUserInputCollection: true,
+      {} as Record<string, string>
+    );
+
+    // Create NodeGuidanceData for direct guidance mode
+    // The orchestrator will generate the guidance prompt directly using taskGuidance
+    const nodeGuidanceData: NodeGuidanceData<typeof GET_INPUT_WORKFLOW_INPUT_SCHEMA> = {
+      nodeId: metadata.toolId,
+      inputSchema: metadata.inputSchema,
+      input,
+      taskGuidance: metadata.generateTaskGuidance!(input),
+      resultSchema: metadata.resultSchema,
+      // Provide example to help LLM understand the expected userUtterance wrapper
+      exampleOutput: JSON.stringify(
+        {
+          userUtterance: exampleProperties,
+        },
+        null,
+        2
+      ),
     };
 
     // Execute tool with logging and validation
     const validatedResult = this.executeToolWithLogging(
-      toolInvocationData,
+      nodeGuidanceData,
       GET_INPUT_WORKFLOW_RESULT_SCHEMA
     );
 
