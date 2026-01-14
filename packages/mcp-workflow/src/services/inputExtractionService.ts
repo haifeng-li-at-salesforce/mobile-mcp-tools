@@ -15,7 +15,7 @@ import {
   INPUT_EXTRACTION_WORKFLOW_INPUT_SCHEMA,
 } from '../tools/utilities/index.js';
 import { Logger } from '../logging/logger.js';
-import { MCPToolInvocationData } from '../common/metadata.js';
+import { NodeGuidanceData } from '../common/metadata.js';
 
 /**
  * Result from property extraction containing validated properties.
@@ -43,8 +43,9 @@ export interface InputExtractionServiceProvider {
 /**
  * Service for extracting structured properties from user input.
  *
- * This service extends AbstractService to leverage common tool execution
- * patterns including standardized logging and result validation.
+ * This service uses direct guidance mode (NodeGuidanceData) to have the orchestrator
+ * generate property extraction prompts directly, eliminating the need for an
+ * intermediate tool call.
  */
 export class InputExtractionService
   extends AbstractService
@@ -75,23 +76,41 @@ export class InputExtractionService
     const resultSchema = this.preparePropertyResultsSchema(properties);
     const resultSchemaString = JSON.stringify(zodToJsonSchema(resultSchema));
     const metadata = createInputExtractionMetadata(this.toolId);
+    const input = {
+      userUtterance: userInput,
+      propertiesToExtract,
+      resultSchema: resultSchemaString,
+    };
 
-    const toolInvocationData: MCPToolInvocationData<typeof INPUT_EXTRACTION_WORKFLOW_INPUT_SCHEMA> =
-      {
-        llmMetadata: {
-          name: metadata.toolId,
-          description: metadata.description,
-          inputSchema: metadata.inputSchema,
+    // Build a concrete example based on the actual properties being requested
+    const exampleProperties = propertiesToExtract.reduce(
+      (acc, prop) => {
+        acc[prop.propertyName] = `<extracted ${prop.propertyName} value or null>`;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Create NodeGuidanceData for direct guidance mode
+    // The orchestrator will generate the guidance prompt directly using taskGuidance
+    const nodeGuidanceData: NodeGuidanceData<typeof INPUT_EXTRACTION_WORKFLOW_INPUT_SCHEMA> = {
+      nodeId: metadata.toolId,
+      inputSchema: metadata.inputSchema,
+      input,
+      taskGuidance: metadata.generateTaskGuidance!(input),
+      resultSchema: resultSchema,
+      // Provide example to help LLM understand the expected extractedProperties wrapper
+      exampleOutput: JSON.stringify(
+        {
+          extractedProperties: exampleProperties,
         },
-        input: {
-          userUtterance: userInput,
-          propertiesToExtract,
-          resultSchema: resultSchemaString,
-        },
-      };
+        null,
+        2
+      ),
+    };
 
     const validatedResult = this.executeToolWithLogging(
-      toolInvocationData,
+      nodeGuidanceData,
       resultSchema,
       (rawResult, schema) => this.validateAndFilterResult(rawResult, properties, schema)
     );

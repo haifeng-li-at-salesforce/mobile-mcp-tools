@@ -533,15 +533,19 @@ Gather user input for platform and projectName.
       expect(prompt).toContain('# INPUT DATA');
       expect(prompt).toContain('propertiesRequiringInput');
 
-      // Should contain post-task instructions
-      expect(prompt).toContain('# POST-TASK INSTRUCTIONS');
+      // Should contain critical next step instructions
+      expect(prompt).toContain('# CRITICAL: REQUIRED NEXT STEP');
       expect(prompt).toContain(orchestratorToolId);
       expect(prompt).toContain('workflowStateData');
 
-      // Should contain output format section at the end for LLM attention
+      // Should contain output format section
       expect(prompt).toContain('# OUTPUT FORMAT');
-      expect(prompt).toContain('MUST conform to the following JSON schema');
+      expect(prompt).toContain('MUST be a JSON object conforming to this schema');
       expect(prompt).toContain('userUtterance');
+
+      // Should contain final reminder for compliance
+      expect(prompt).toContain('# FINAL REMINDER');
+      expect(prompt).toContain('workflow will FAIL');
 
       // Should NOT contain delegate mode content
       expect(prompt).not.toContain('Invoke the following MCP server tool');

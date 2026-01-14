@@ -314,24 +314,36 @@ ${inputSchemaJson}
 ${inputDataJson}
 \`\`\`
 
-# POST-TASK INSTRUCTIONS
+# CRITICAL: REQUIRED NEXT STEP
 
-After completing the task described above, you MUST return your result to the orchestrator
-by invoking the \`${this.toolMetadata.toolId}\` tool.
+After completing the task above, you **MUST** invoke the \`${this.toolMetadata.toolId}\` tool 
+to continue the workflow. The workflow CANNOT proceed without this tool call.
 
-Provide the following input values to the \`${this.toolMetadata.toolId}\` tool:
+**DO NOT:**
+- Simply respond with text
+- Skip the tool call
+- Forget to include the required parameters
 
-- \`${WORKFLOW_PROPERTY_NAMES.userInput}\`: Your formatted result (see OUTPUT FORMAT below).
-- \`${WORKFLOW_PROPERTY_NAMES.workflowStateData}\`: ${JSON.stringify(workflowStateData)}
+**YOU MUST** call the \`${this.toolMetadata.toolId}\` tool with EXACTLY these parameters:
+
+| Parameter | Value |
+|-----------|-------|
+| \`${WORKFLOW_PROPERTY_NAMES.userInput}\` | Your formatted result (see OUTPUT FORMAT below) |
+| \`${WORKFLOW_PROPERTY_NAMES.workflowStateData}\` | \`${JSON.stringify(workflowStateData)}\` |
 
 # OUTPUT FORMAT
 
-**IMPORTANT:** Your \`${WORKFLOW_PROPERTY_NAMES.userInput}\` value MUST conform to the following JSON schema:
+The \`${WORKFLOW_PROPERTY_NAMES.userInput}\` parameter MUST be a JSON object conforming to this schema:
 
 \`\`\`json
 ${resultSchemaJson}
 \`\`\`
 ${exampleSection}
+# FINAL REMINDER
+
+Your response MUST end with a tool call to \`${this.toolMetadata.toolId}\`.
+Pass your result as the \`${WORKFLOW_PROPERTY_NAMES.userInput}\` parameter.
+The workflow will FAIL if you do not make this tool call.
 `;
   }
 }

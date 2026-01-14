@@ -330,7 +330,8 @@ describe('InputExtractionTool', () => {
       const response = JSON.parse(responseText);
 
       expect(response.promptForLLM).toContain('# ROLE');
-      expect(response.promptForLLM).toContain('highly accurate and precise data extraction tool');
+      expect(response.promptForLLM).toContain('conservative');
+      expect(response.promptForLLM).toContain('data extraction tool');
     });
 
     it('should include TASK section', async () => {
@@ -346,8 +347,8 @@ describe('InputExtractionTool', () => {
       const response = JSON.parse(responseText);
 
       expect(response.promptForLLM).toContain('# TASK');
-      expect(response.promptForLLM).toContain('analyze a user utterance');
-      expect(response.promptForLLM).toContain('extract values for a given list of properties');
+      expect(response.promptForLLM).toContain('Analyze the user utterance');
+      expect(response.promptForLLM).toContain('extract');
     });
 
     it('should include USER UTTERANCE TO ANALYZE', async () => {
@@ -401,10 +402,10 @@ describe('InputExtractionTool', () => {
       const response = JSON.parse(responseText);
 
       expect(response.promptForLLM).toContain('# INSTRUCTIONS');
-      expect(response.promptForLLM).toContain('Carefully read');
-      expect(response.promptForLLM).toContain('search the text for');
-      // Check for the backtick-formatted null value
-      expect(response.promptForLLM).toMatch(/use `null` as the/i);
+      expect(response.promptForLLM).toContain('Read the');
+      expect(response.promptForLLM).toContain('EXPLICIT');
+      // Check for the null value instruction
+      expect(response.promptForLLM).toContain('output `null`');
     });
 
     it('should serialize properties as JSON', async () => {
@@ -480,8 +481,10 @@ describe('InputExtractionTool', () => {
       // Create a tool that will throw an error
       const errorTool = new InputExtractionTool(mockServer, TEST_TOOL_ID, TEST_ORCHESTRATOR_ID);
 
-      // Override the private method to throw
-      errorTool['generateInputExtractionGuidance'] = () => {
+      // Override the metadata's generateTaskGuidance to throw
+      (
+        errorTool as unknown as { toolMetadata: { generateTaskGuidance: () => string } }
+      ).toolMetadata.generateTaskGuidance = () => {
         throw new Error('Test error');
       };
 
@@ -502,7 +505,10 @@ describe('InputExtractionTool', () => {
     it('should handle non-Error exceptions', async () => {
       const errorTool = new InputExtractionTool(mockServer, TEST_TOOL_ID, TEST_ORCHESTRATOR_ID);
 
-      errorTool['generateInputExtractionGuidance'] = () => {
+      // Override the metadata's generateTaskGuidance to throw a string
+      (
+        errorTool as unknown as { toolMetadata: { generateTaskGuidance: () => string } }
+      ).toolMetadata.generateTaskGuidance = () => {
         throw 'string error';
       };
 

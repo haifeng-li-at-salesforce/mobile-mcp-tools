@@ -71,7 +71,7 @@ orchestrator.register(orchestratorAnnotations);
 
 // Register all other tools with read-only annotations
 //getInputTool.register(readOnlyAnnotations);
-inputExtractionTool.register(readOnlyAnnotations);
+//inputExtractionTool.register(readOnlyAnnotations);
 templateSelectionTool.register(readOnlyAnnotations);
 buildRecoveryTool.register(readOnlyAnnotations);
 deploymentTool.register(readOnlyAnnotations);
