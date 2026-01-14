@@ -339,11 +339,16 @@ The \`${WORKFLOW_PROPERTY_NAMES.userInput}\` parameter MUST be a JSON object con
 ${resultSchemaJson}
 \`\`\`
 ${exampleSection}
-# FINAL REMINDER
+# EXAMPLE TOOL CALL
 
-Your response MUST end with a tool call to \`${this.toolMetadata.toolId}\`.
-Pass your result as the \`${WORKFLOW_PROPERTY_NAMES.userInput}\` parameter.
-The workflow will FAIL if you do not make this tool call.
+Here is an example of the EXACT format your tool call should follow:
+
+\`\`\`
+Tool: ${this.toolMetadata.toolId}
+Parameters:
+  ${WORKFLOW_PROPERTY_NAMES.userInput}: ${nodeGuidanceData.exampleOutput ? nodeGuidanceData.exampleOutput.replaceAll('\n', '\n    ') : '{ /* your result object here */ }'}
+  ${WORKFLOW_PROPERTY_NAMES.workflowStateData}: ${JSON.stringify(workflowStateData)}
+\`\`\`
 `;
   }
 }
