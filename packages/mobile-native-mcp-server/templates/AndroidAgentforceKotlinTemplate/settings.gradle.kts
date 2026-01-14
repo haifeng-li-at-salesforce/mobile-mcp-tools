@@ -1,4 +1,4 @@
-rootProject.name = "AgentforceDemoAndroid"
+rootProject.name = "AndroidAgentforceKotlinTemplate"
 
 include(":app")
 

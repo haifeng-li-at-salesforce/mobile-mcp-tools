@@ -16,7 +16,7 @@
         ]
     },
     {
-        "path": "AgentforceDemoAndroid",
+        "path": "AndroidAgentforceKotlinTemplate",
         "description": "Basic Kotlin application integrating with the AgentforceSDK for service agents",
         "appType": "native_kotlin",
         "platforms": [

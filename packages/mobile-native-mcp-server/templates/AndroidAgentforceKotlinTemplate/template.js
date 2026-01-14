@@ -36,7 +36,7 @@ function prepare(config, replaceInFiles, moveFile, removeFile) {
     var path = require('path');
 
     // Values in template
-    var templateAppName = 'AgentforceDemoAndroid';
+    var templateAppName = 'AndroidAgentforceKotlinTemplate';
     var templatePackageName = 'com.salesforce.agentforcedemo';
 
     // Template properties for enhanced in-app chat deployment

@@ -1515,7 +1515,7 @@ mobile-native-mcp-server/
 ├── templates/     # Official Salesforce Mobile SDK Templates (packaged with NPM)
 │   ├── iOSNativeSwiftTemplate/
 │   ├── AgentforceDemo/
-│   ├── AgentforceDemoAndroid/
+│   ├── AndroidAgentforceKotlinTemplate/
 │   ├── AndroidNativeKotlinTemplate/
 │   ├── MobileSyncExplorerSwift/
 │   ├── MobileSyncExplorerKotlinTemplate/
