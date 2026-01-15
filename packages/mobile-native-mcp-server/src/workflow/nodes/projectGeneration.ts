@@ -5,39 +5,68 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 
-import { BaseNode, createComponentLogger, Logger } from '@salesforce/magen-mcp-workflow';
+import {
+  BaseNode,
+  createComponentLogger,
+  Logger,
+  CommandRunner,
+  WorkflowRunnableConfig,
+} from '@salesforce/magen-mcp-workflow';
 import { State } from '../metadata.js';
-import { execSync } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { MOBILE_SDK_TEMPLATES_PATH } from '../../common.js';
 
 export class ProjectGenerationNode extends BaseNode<State> {
   protected readonly logger: Logger;
+  private readonly commandRunner: CommandRunner;
 
-  constructor(logger?: Logger) {
+  constructor(commandRunner: CommandRunner, logger?: Logger) {
     super('generateProject');
     this.logger = logger ?? createComponentLogger('ProjectGenerationNode');
+    this.commandRunner = commandRunner;
   }
 
-  execute = (state: State): Partial<State> => {
+  execute = async (state: State, config?: WorkflowRunnableConfig): Promise<Partial<State>> => {
     try {
       const platformLower = state.platform.toLowerCase();
 
       // Build template properties flags if they exist
-      let templatePropertiesFlags = '';
+      const templatePropertiesArgs: string[] = [];
       if (state.templateProperties && Object.keys(state.templateProperties).length > 0) {
-        const propertyFlags = Object.entries(state.templateProperties)
-          .map(([key, value]) => `--template-property-${key}="${value}"`)
-          .join(' ');
-        templatePropertiesFlags = ` ${propertyFlags}`;
+        for (const [key, value] of Object.entries(state.templateProperties)) {
+          templatePropertiesArgs.push(`--template-property-${key}`, value);
+        }
       }
 
-      // Build the sf mobilesdk command with all parameters including sensitive credentials
-      const command = `sf mobilesdk ${platformLower} createwithtemplate --templatesource="${MOBILE_SDK_TEMPLATES_PATH}" --template="${state.selectedTemplate}" --appname="${state.projectName}" --packagename="${state.packageName}" --organization="${state.organization}" --consumerkey="${state.connectedAppClientId}" --callbackurl="${state.connectedAppCallbackUri}" --loginserver="${state.loginHost}" ${templatePropertiesFlags}`;
+      // Build command arguments array
+      // Note: No quotes needed - spawn() handles spaces in arguments correctly
+      const args = [
+        'mobilesdk',
+        platformLower,
+        'createwithtemplate',
+        '--templatesource',
+        MOBILE_SDK_TEMPLATES_PATH,
+        '--template',
+        state.selectedTemplate,
+        '--appname',
+        state.projectName,
+        '--packagename',
+        state.packageName,
+        '--organization',
+        state.organization,
+        '--consumerkey',
+        state.connectedAppClientId,
+        '--callbackurl',
+        state.connectedAppCallbackUri,
+        '--loginserver',
+        state.loginHost,
+        ...templatePropertiesArgs,
+      ];
 
       this.logger.debug('Executing project generation command', {
         template: state.selectedTemplate,
+        templateSource: MOBILE_SDK_TEMPLATES_PATH,
         projectName: state.projectName,
         platform: state.platform,
         packageName: state.packageName,
@@ -48,18 +77,41 @@ export class ProjectGenerationNode extends BaseNode<State> {
         templateProperties: state.templateProperties,
       });
 
-      // Execute the command directly without exposing credentials to LLM
-      // Set UTF-8 encoding environment variables for CocoaPods compatibility
-      const env = {
-        ...process.env,
-        LANG: 'en_US.UTF-8',
-        LC_ALL: 'en_US.UTF-8',
-      };
-      const output = execSync(command, { encoding: 'utf-8', timeout: 120000, env });
+      // Get progress reporter from config (passed by orchestrator)
+      const progressReporter = config?.configurable?.progressReporter;
+
+      // Execute the command using CommandRunner
+      const result = await this.commandRunner.execute('sf', args, {
+        timeout: 120000,
+        cwd: process.cwd(),
+        progressReporter,
+        commandName: 'Project Generation',
+      });
+
+      if (!result.success) {
+        const errorMessage =
+          result.stderr ||
+          `Command failed with exit code ${result.exitCode ?? 'unknown'}${
+            result.signal ? ` (signal: ${result.signal})` : ''
+          }`;
+        this.logger.error('Project generation command failed', new Error(errorMessage));
+        this.logger.debug('Command execution details', {
+          exitCode: result.exitCode ?? null,
+          signal: result.signal ?? null,
+          stderr: result.stderr,
+          stdout: result.stdout,
+        });
+        return {
+          workflowFatalErrorMessages: [
+            `Failed to generate project: ${errorMessage}. Please ensure the Salesforce Mobile SDK CLI is properly installed and configured.`,
+          ],
+        };
+      }
 
       this.logger.debug('Command executed successfully', {
-        outputLength: output.length,
-        hasOutput: output.trim().length > 0,
+        outputLength: result.stdout.length,
+        hasOutput: result.stdout.trim().length > 0,
+        duration: result.duration,
       });
 
       // Determine project path (the CLI creates the project in the current working directory)

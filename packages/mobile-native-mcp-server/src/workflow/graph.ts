@@ -17,7 +17,7 @@ import { TemplateOptionsFetchNode } from './nodes/templateOptionsFetch.js';
 import { TemplateSelectionNode } from './nodes/templateSelection.js';
 import { ProjectGenerationNode } from './nodes/projectGeneration.js';
 import { BuildValidationNode } from './nodes/buildValidation.js';
-import { BuildExecutor } from '../execution/build/buildExecutor.js';
+import { DefaultBuildExecutor } from '../execution/build/buildExecutor.js';
 import { BuildRecoveryNode } from './nodes/buildRecovery.js';
 import { CheckBuildSuccessfulRouter } from './nodes/checkBuildSuccessfulRouter.js';
 import { DeploymentNode } from './nodes/deploymentNode.js';
@@ -34,13 +34,27 @@ import { ExtractAndroidSetupNode } from './nodes/extractAndroidSetup.js';
 import { PluginCheckNode } from './nodes/checkPluginSetup.js';
 import { CheckPluginValidatedRouter } from './nodes/checkPluginValidatedRouter.js';
 import { CheckProjectGenerationRouter } from './nodes/checkProjectGenerationRouter.js';
+import { CheckDeploymentPlatformRouter } from './nodes/checkDeploymentPlatformRouter.js';
 import {
   createGetUserInputNode,
   createUserInputExtractionNode,
   CheckPropertiesFulfilledRouter,
+  DefaultCommandRunner,
+  type Logger,
 } from '@salesforce/magen-mcp-workflow';
+import {
+  iOSSelectSimulatorNode,
+  iOSBootSimulatorNode,
+  iOSInstallAppNode,
+  iOSLaunchAppNode,
+  AndroidListDevicesNode,
+  AndroidStartEmulatorNode,
+  AndroidInstallAppNode,
+  AndroidLaunchAppNode,
+} from './nodes/deployment/index.js';
 import { SFMOBILE_NATIVE_GET_INPUT_TOOL_ID } from '../tools/utils/sfmobile-native-get-input/metadata.js';
 import { SFMOBILE_NATIVE_INPUT_EXTRACTION_TOOL_ID } from '../tools/utils/sfmobile-native-input-extraction/metadata.js';
+import { defaultTempDirectoryManager } from '../common.js';
 
 const initialUserInputExtractionNode = createUserInputExtractionNode<State>({
   requiredProperties: WORKFLOW_USER_INPUT_PROPERTIES,
@@ -70,7 +84,6 @@ const templateOptionsFetchNode = new TemplateOptionsFetchNode();
 const templateSelectionNode = new TemplateSelectionNode();
 const templatePropertiesExtractionNode = new TemplatePropertiesExtractionNode();
 const templatePropertiesUserInputNode = new TemplatePropertiesUserInputNode();
-const projectGenerationNode = new ProjectGenerationNode();
 const buildRecoveryNode = new BuildRecoveryNode();
 const deploymentNode = new DeploymentNode();
 const completionNode = new CompletionNode();
@@ -98,23 +111,31 @@ const checkAndroidSetupExtractedRouter = new CheckAndroidSetupExtractedRouter(
   platformCheckNode.name,
   failureNode.name
 );
-
-const checkTemplatePropertiesFulfilledRouter = new CheckTemplatePropertiesFulfilledRouter(
-  projectGenerationNode.name,
-  templatePropertiesUserInputNode.name
-);
-
 /**
- * Creates the mobile native workflow graph with injected dependencies.
- *
- * @param buildExecutor - Build executor for executing builds with progress reporting
+ * Creates the mobile native workflow graph.
+ * @param logger - Optional logger
  * @returns Configured workflow graph
  */
-export function createMobileNativeWorkflow(buildExecutor: BuildExecutor) {
-  // Create build validation node with BuildExecutor
+export function createMobileNativeWorkflow(logger?: Logger) {
+  const commandRunner = new DefaultCommandRunner(logger);
+  const tempDirManager = defaultTempDirectoryManager;
+  const buildExecutor = new DefaultBuildExecutor(commandRunner, tempDirManager, logger);
+  const projectGenerationNode = new ProjectGenerationNode(commandRunner, logger);
   const buildValidationNodeInstance = new BuildValidationNode(buildExecutor);
 
-  // Create routers that reference buildValidationNodeInstance
+  // Create iOS deployment nodes
+  const iosSelectSimulatorNode = new iOSSelectSimulatorNode(commandRunner, logger);
+  const iosBootSimulatorNode = new iOSBootSimulatorNode(commandRunner, logger);
+  const iosInstallAppNode = new iOSInstallAppNode(commandRunner, tempDirManager, logger);
+  const iosLaunchAppNode = new iOSLaunchAppNode(commandRunner, logger);
+
+  // Create Android deployment nodes
+  const androidSelectEmulatorNode = new AndroidListDevicesNode(commandRunner, logger);
+  const androidStartEmulatorNode = new AndroidStartEmulatorNode(commandRunner, logger);
+  const androidInstallAppNode = new AndroidInstallAppNode(commandRunner, logger);
+  const androidLaunchAppNode = new AndroidLaunchAppNode(commandRunner, logger);
+
+  // Create routers
   const checkProjectGenerationRouterInstance = new CheckProjectGenerationRouter(
     buildValidationNodeInstance.name,
     failureNode.name
@@ -123,6 +144,17 @@ export function createMobileNativeWorkflow(buildExecutor: BuildExecutor) {
   const checkBuildSuccessfulRouterInstance = new CheckBuildSuccessfulRouter(
     deploymentNode.name,
     buildRecoveryNode.name,
+    failureNode.name
+  );
+
+  const checkTemplatePropertiesFulfilledRouter = new CheckTemplatePropertiesFulfilledRouter(
+    projectGenerationNode.name,
+    templatePropertiesUserInputNode.name
+  );
+
+  const checkDeploymentPlatformRouterInstance = new CheckDeploymentPlatformRouter(
+    iosSelectSimulatorNode.name,
+    androidSelectEmulatorNode.name,
     failureNode.name
   );
 
@@ -144,6 +176,16 @@ export function createMobileNativeWorkflow(buildExecutor: BuildExecutor) {
       .addNode(buildValidationNodeInstance.name, buildValidationNodeInstance.execute)
       .addNode(buildRecoveryNode.name, buildRecoveryNode.execute)
       .addNode(deploymentNode.name, deploymentNode.execute)
+      // iOS deployment nodes
+      .addNode(iosSelectSimulatorNode.name, iosSelectSimulatorNode.execute)
+      .addNode(iosBootSimulatorNode.name, iosBootSimulatorNode.execute)
+      .addNode(iosInstallAppNode.name, iosInstallAppNode.execute)
+      .addNode(iosLaunchAppNode.name, iosLaunchAppNode.execute)
+      // Android deployment nodes
+      .addNode(androidSelectEmulatorNode.name, androidSelectEmulatorNode.execute)
+      .addNode(androidStartEmulatorNode.name, androidStartEmulatorNode.execute)
+      .addNode(androidInstallAppNode.name, androidInstallAppNode.execute)
+      .addNode(androidLaunchAppNode.name, androidLaunchAppNode.execute)
       .addNode(completionNode.name, completionNode.execute)
       .addNode(failureNode.name, failureNode.execute)
 
@@ -174,8 +216,19 @@ export function createMobileNativeWorkflow(buildExecutor: BuildExecutor) {
         checkBuildSuccessfulRouterInstance.execute
       )
       .addEdge(buildRecoveryNode.name, buildValidationNodeInstance.name)
-      // Continue to deployment and completion
-      .addEdge(deploymentNode.name, completionNode.name)
+      // Deployment flow - route based on platform
+      .addConditionalEdges(deploymentNode.name, checkDeploymentPlatformRouterInstance.execute)
+      // iOS deployment flow
+      .addEdge(iosSelectSimulatorNode.name, iosBootSimulatorNode.name)
+      .addEdge(iosBootSimulatorNode.name, iosInstallAppNode.name)
+      .addEdge(iosInstallAppNode.name, iosLaunchAppNode.name)
+      .addEdge(iosLaunchAppNode.name, completionNode.name)
+      // Android deployment flow
+      .addEdge(androidSelectEmulatorNode.name, androidStartEmulatorNode.name)
+      .addEdge(androidStartEmulatorNode.name, androidInstallAppNode.name)
+      .addEdge(androidInstallAppNode.name, androidLaunchAppNode.name)
+      .addEdge(androidLaunchAppNode.name, completionNode.name)
+      // Completion and failure
       .addEdge(completionNode.name, END)
       .addEdge(failureNode.name, END)
   );

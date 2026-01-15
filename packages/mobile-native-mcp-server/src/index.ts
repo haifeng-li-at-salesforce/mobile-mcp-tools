@@ -51,8 +51,8 @@ const orchestratorAnnotations: ToolAnnotations = {
 
 // Initialize tools
 const orchestrator = new MobileNativeOrchestrator(server);
-const getInputTool = createSFMobileNativeGetInputTool(server);
-const inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
+const _getInputTool = createSFMobileNativeGetInputTool(server);
+const _inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
 const templateSelectionTool = new SFMobileNativeTemplateSelectionTool(server);
 const buildRecoveryTool = new SFMobileNativeBuildRecoveryTool(server);
 const deploymentTool = new SFMobileNativeDeploymentTool(server);
@@ -70,8 +70,8 @@ const mobileAppProjectPrompt = new MobileAppProjectPrompt(server);
 orchestrator.register(orchestratorAnnotations);
 
 // Register all other tools with read-only annotations
-//getInputTool.register(readOnlyAnnotations);
-//inputExtractionTool.register(readOnlyAnnotations);
+//_getInputTool.register(readOnlyAnnotations);
+//_inputExtractionTool.register(readOnlyAnnotations);
 templateSelectionTool.register(readOnlyAnnotations);
 buildRecoveryTool.register(readOnlyAnnotations);
 deploymentTool.register(readOnlyAnnotations);

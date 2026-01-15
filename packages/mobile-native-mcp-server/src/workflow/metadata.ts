@@ -132,6 +132,7 @@ export const MobileNativeWorkflowState = Annotation.Root({
   buildOutputFilePath: Annotation<string>,
   recoveryReadyForRetry: Annotation<boolean>,
   deploymentStatus: Annotation<string>,
+  androidEmulatorName: Annotation<string>,
 });
 
 export type State = typeof MobileNativeWorkflowState.State;
