@@ -100,13 +100,7 @@ export class InputExtractionService
       taskGuidance: metadata.generateTaskGuidance!(input),
       resultSchema: resultSchema,
       // Provide example to help LLM understand the expected extractedProperties wrapper
-      exampleOutput: JSON.stringify(
-        {
-          extractedProperties: exampleProperties,
-        },
-        null,
-        2
-      ),
+      exampleOutput: JSON.stringify({ extractedProperties: exampleProperties }),
     };
 
     const validatedResult = this.executeToolWithLogging(

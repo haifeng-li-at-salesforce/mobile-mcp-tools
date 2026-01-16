@@ -25,7 +25,9 @@ export const INITIAL_USER_REQUEST_SCHEMA = z.object({
  * Schema for resumption user input when continuing an existing workflow.
  * This allows any structured data returned from previous tool executions.
  */
-export const RESUMPTION_USER_INPUT_SCHEMA = z.record(z.string(), z.unknown());
+export const RESUMPTION_USER_INPUT_SCHEMA = z
+  .record(z.string(), z.unknown())
+  .describe('Used for structured input generated from the results of previous tool calls.');
 
 /**
  * Combined user input schema that accepts either:

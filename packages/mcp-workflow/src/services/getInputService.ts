@@ -91,13 +91,7 @@ export class GetInputService extends AbstractService implements GetInputServiceP
       taskGuidance: metadata.generateTaskGuidance!(input),
       resultSchema: metadata.resultSchema,
       // Provide example to help LLM understand the expected userUtterance wrapper
-      exampleOutput: JSON.stringify(
-        {
-          userUtterance: exampleProperties,
-        },
-        null,
-        2
-      ),
+      exampleOutput: JSON.stringify({ userUtterance: exampleProperties }),
     };
 
     // Execute tool with logging and validation
