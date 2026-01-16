@@ -10,10 +10,10 @@ import { AndroidLaunchAppNode } from '../../../../src/workflow/nodes/deployment/
 import { MockLogger } from '../../../utils/MockLogger.js';
 import { createTestState } from '../../../utils/stateBuilders.js';
 import { CommandRunner, type CommandResult } from '@salesforce/magen-mcp-workflow';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 
-vi.mock('fs', async importOriginal => {
-  const actual = await importOriginal<typeof import('fs')>();
+vi.mock('node:fs', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
     readFileSync: vi.fn(),
@@ -98,9 +98,22 @@ describe('AndroidLaunchAppNode', () => {
         platform: 'Android',
         projectPath: '/path/to/project',
         packageName: 'com.test.app',
+        androidEmulatorName: 'Pixel_8_API_34',
       });
 
-      vi.mocked(readFileSync).mockImplementation(() => {
+      // Mock build.gradle to not have applicationId (will fall back to packageName)
+      vi.mocked(readFileSync).mockImplementation((filePath: unknown) => {
+        const path = String(filePath);
+        if (path.includes('build.gradle')) {
+          throw new Error('File not found');
+        }
+        if (path.includes('AndroidManifest.xml')) {
+          return `<activity android:name=".MainActivity">
+            <intent-filter>
+              <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+          </activity>`;
+        }
         throw new Error('File not found');
       });
 
@@ -121,8 +134,20 @@ describe('AndroidLaunchAppNode', () => {
         deploymentStatus: 'success',
       });
       expect(mockCommandRunner.execute).toHaveBeenCalledWith(
-        'adb',
-        ['shell', 'monkey', '-p', 'com.test.app', '-c', 'android.intent.category.LAUNCHER', '1'],
+        'sf',
+        [
+          'force',
+          'lightning',
+          'local',
+          'app',
+          'launch',
+          '-p',
+          'android',
+          '-t',
+          'Pixel_8_API_34',
+          '-i',
+          'com.test.app/.MainActivity',
+        ],
         expect.objectContaining({
           timeout: 30000,
           commandName: 'Android App Launch',
@@ -136,9 +161,23 @@ describe('AndroidLaunchAppNode', () => {
         platform: 'Android',
         projectPath: '/path/to/project',
         packageName: undefined,
+        androidEmulatorName: 'Pixel_8_API_34',
       });
 
-      vi.mocked(readFileSync).mockReturnValue('applicationId = "com.test.app"');
+      vi.mocked(readFileSync).mockImplementation((filePath: unknown) => {
+        const path = String(filePath);
+        if (path.includes('build.gradle')) {
+          return 'applicationId = "com.test.app"';
+        }
+        if (path.includes('AndroidManifest.xml')) {
+          return `<activity android:name=".MainActivity">
+            <intent-filter>
+              <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+          </activity>`;
+        }
+        throw new Error('File not found');
+      });
 
       const launchResult: CommandResult = {
         exitCode: 0,
@@ -157,8 +196,20 @@ describe('AndroidLaunchAppNode', () => {
         deploymentStatus: 'success',
       });
       expect(mockCommandRunner.execute).toHaveBeenCalledWith(
-        'adb',
-        ['shell', 'monkey', '-p', 'com.test.app', '-c', 'android.intent.category.LAUNCHER', '1'],
+        'sf',
+        [
+          'force',
+          'lightning',
+          'local',
+          'app',
+          'launch',
+          '-p',
+          'android',
+          '-t',
+          'Pixel_8_API_34',
+          '-i',
+          'com.test.app/.MainActivity',
+        ],
         expect.objectContaining({
           timeout: 30000,
           commandName: 'Android App Launch',
@@ -171,6 +222,7 @@ describe('AndroidLaunchAppNode', () => {
         platform: 'Android',
         projectPath: '/path/to/project',
         packageName: undefined,
+        androidEmulatorName: 'Pixel_8_API_34',
       });
 
       vi.mocked(readFileSync).mockImplementation(() => {
@@ -191,9 +243,21 @@ describe('AndroidLaunchAppNode', () => {
         platform: 'Android',
         projectPath: '/path/to/project',
         packageName: 'com.test.app',
+        androidEmulatorName: 'Pixel_8_API_34',
       });
 
-      vi.mocked(readFileSync).mockImplementation(() => {
+      vi.mocked(readFileSync).mockImplementation((filePath: unknown) => {
+        const path = String(filePath);
+        if (path.includes('build.gradle')) {
+          throw new Error('File not found');
+        }
+        if (path.includes('AndroidManifest.xml')) {
+          return `<activity android:name=".MainActivity">
+            <intent-filter>
+              <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+          </activity>`;
+        }
         throw new Error('File not found');
       });
 
@@ -222,9 +286,21 @@ describe('AndroidLaunchAppNode', () => {
         platform: 'Android',
         projectPath: '/path/to/project',
         packageName: 'com.test.app',
+        androidEmulatorName: 'Pixel_8_API_34',
       });
 
-      vi.mocked(readFileSync).mockImplementation(() => {
+      vi.mocked(readFileSync).mockImplementation((filePath: unknown) => {
+        const path = String(filePath);
+        if (path.includes('build.gradle')) {
+          throw new Error('File not found');
+        }
+        if (path.includes('AndroidManifest.xml')) {
+          return `<activity android:name=".MainActivity">
+            <intent-filter>
+              <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+          </activity>`;
+        }
         throw new Error('File not found');
       });
 
