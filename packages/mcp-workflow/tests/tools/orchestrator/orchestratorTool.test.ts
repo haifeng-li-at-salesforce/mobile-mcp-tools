@@ -5,9 +5,11 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Annotation, StateGraph, START, END, interrupt } from '@langchain/langgraph';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { z } from 'zod';
 import { OrchestratorTool, OrchestratorConfig } from '../../../src/tools/orchestrator/index.js';
 import { WorkflowStateManager } from '../../../src/checkpointing/workflowStateManager.js';
@@ -18,6 +20,22 @@ import {
   GET_INPUT_WORKFLOW_INPUT_SCHEMA,
   GET_INPUT_WORKFLOW_RESULT_SCHEMA,
 } from '../../../src/tools/utilities/getInput/metadata.js';
+
+/**
+ * Creates a mock RequestHandlerExtra object for testing.
+ * The extra parameter is required by the ToolCallback type signature.
+ */
+function createMockExtra(): RequestHandlerExtra<ServerRequest, ServerNotification> {
+  return {
+    signal: new AbortController().signal,
+    requestId: 'test-request-id',
+    sendNotification: vi.fn().mockResolvedValue(undefined),
+    sendRequest: vi.fn().mockResolvedValue({}),
+    _meta: {
+      progressToken: 'test-progress-token',
+    },
+  } as unknown as RequestHandlerExtra<ServerRequest, ServerNotification>;
+}
 
 // Create a simple test state for testing
 const TestState = Annotation.Root({
@@ -128,10 +146,13 @@ describe('OrchestratorTool', () => {
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: { test: 'data' },
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: { test: 'data' },
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
@@ -163,14 +184,20 @@ describe('OrchestratorTool', () => {
       const orchestrator = new OrchestratorTool(server, config);
 
       // Make two requests without thread IDs
-      await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
-      await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
+      await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       // Check that thread IDs were logged and start with 'mmw-'
       const processingLogs = mockLogger.logs.filter(log =>
@@ -205,10 +232,13 @@ describe('OrchestratorTool', () => {
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result.structuredContent).toBeDefined();
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
@@ -235,10 +265,13 @@ describe('OrchestratorTool', () => {
       const orchestrator = new OrchestratorTool(server, config);
 
       await expect(
-        orchestrator.handleRequest({
-          userInput: {},
-          workflowStateData: { thread_id: '' },
-        })
+        orchestrator.handleRequest(
+          {
+            userInput: {},
+            workflowStateData: { thread_id: '' },
+          },
+          createMockExtra()
+        )
       ).rejects.toThrow();
 
       // Verify error was logged
@@ -266,10 +299,13 @@ describe('OrchestratorTool', () => {
       const orchestrator = new OrchestratorTool(server, config);
 
       const existingThreadId = 'mmw-12345-abc123';
-      await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: existingThreadId },
-      });
+      await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: existingThreadId },
+        },
+        createMockExtra()
+      );
 
       // Find the processing log and verify it used the existing thread ID
       const processingLog = mockLogger.logs.find(log =>
@@ -328,10 +364,13 @@ describe('OrchestratorTool', () => {
       const orchestrator = new OrchestratorTool(server, config);
 
       // Should execute without attempting file I/O
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result).toBeDefined();
 
@@ -403,10 +442,13 @@ describe('OrchestratorTool', () => {
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result.structuredContent).toBeDefined();
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
@@ -448,10 +490,13 @@ describe('OrchestratorTool', () => {
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
       // Should reference the custom tool ID in the prompt
@@ -511,10 +556,13 @@ Gather user input for platform and projectName.
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result.structuredContent).toBeDefined();
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
@@ -528,10 +576,8 @@ Gather user input for platform and projectName.
       expect(prompt).toContain('input gathering tool');
       expect(prompt).toContain('YOU MUST NOW WAIT for the user');
 
-      // Should contain input schema and data sections
-      expect(prompt).toContain('# INPUT SCHEMA');
-      expect(prompt).toContain('# INPUT DATA');
-      expect(prompt).toContain('propertiesRequiringInput');
+      // Input data is embedded directly in taskGuidance (no separate INPUT SCHEMA/DATA sections)
+      // The taskGuidance already contains all necessary context
 
       // Should contain critical next step instructions
       expect(prompt).toContain('# CRITICAL: REQUIRED NEXT STEP');
@@ -543,9 +589,8 @@ Gather user input for platform and projectName.
       expect(prompt).toContain('MUST be a JSON object conforming to this schema');
       expect(prompt).toContain('userUtterance');
 
-      // Should contain final reminder for compliance
-      expect(prompt).toContain('# FINAL REMINDER');
-      expect(prompt).toContain('workflow will FAIL');
+      // Should contain example tool call section
+      expect(prompt).toContain('# EXAMPLE TOOL CALL');
 
       // Should NOT contain delegate mode content
       expect(prompt).not.toContain('Invoke the following MCP server tool');
@@ -584,10 +629,13 @@ Gather user input for platform and projectName.
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result.structuredContent).toBeDefined();
       const output = result.structuredContent as { orchestrationInstructionsPrompt: string };
@@ -658,10 +706,13 @@ Gather user input for platform and projectName.
       const orchestrator = new OrchestratorTool(server, config);
 
       // STEP 1: Start workflow - should hit interrupt
-      const result1 = await orchestrator.handleRequest({
-        userInput: {},
-        workflowStateData: { thread_id: '' },
-      });
+      const result1 = await orchestrator.handleRequest(
+        {
+          userInput: {},
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result1.structuredContent).toBeDefined();
       const output1 = result1.structuredContent as { orchestrationInstructionsPrompt: string };
@@ -681,10 +732,13 @@ Gather user input for platform and projectName.
       mockLogger.reset();
 
       // STEP 2: Resume workflow with user input from "tool execution"
-      const result2 = await orchestrator.handleRequest({
-        userInput: { userName: 'John Doe' },
-        workflowStateData: { thread_id: threadId },
-      });
+      const result2 = await orchestrator.handleRequest(
+        {
+          userInput: { userName: 'John Doe' },
+          workflowStateData: { thread_id: threadId },
+        },
+        createMockExtra()
+      );
 
       // Should complete successfully
       expect(result2).toBeDefined();
@@ -727,10 +781,13 @@ Gather user input for platform and projectName.
 
       const orchestrator = new OrchestratorTool(server, config);
 
-      const result = await orchestrator.handleRequest({
-        userInput: { name: 'test' },
-        workflowStateData: { thread_id: '' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: { name: 'test' },
+          workflowStateData: { thread_id: '' },
+        },
+        createMockExtra()
+      );
 
       expect(result).toBeDefined();
       expect(result.structuredContent).toBeDefined();
@@ -758,11 +815,14 @@ Gather user input for platform and projectName.
       const orchestrator = new OrchestratorTool(server, config);
 
       // Send input that violates schema - userInput should be Record<string, unknown>, not a string
-      const result = await orchestrator.handleRequest({
-        // @ts-expect-error: We are intentionally sending a string instead of an object
-        userInput: 'this should be an object, not a string',
-        workflowStateData: { thread_id: 'test-thread' },
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          // @ts-expect-error: We are intentionally sending a string instead of an object
+          userInput: 'this should be an object, not a string',
+          workflowStateData: { thread_id: 'test-thread' },
+        },
+        createMockExtra()
+      );
 
       // Should still return a valid result (starts new workflow with generated thread ID)
       expect(result).toBeDefined();
@@ -797,11 +857,14 @@ Gather user input for platform and projectName.
       const orchestrator = new OrchestratorTool(server, config);
 
       // Send input with malformed workflowStateData (should be object, not string)
-      const result = await orchestrator.handleRequest({
-        userInput: { test: 'data' },
-        // @ts-expect-error: We are intentionally sending a string instead of an object
-        workflowStateData: 'this is not an object',
-      });
+      const result = await orchestrator.handleRequest(
+        {
+          userInput: { test: 'data' },
+          // @ts-expect-error: We are intentionally sending a string instead of an object
+          workflowStateData: 'this is not an object',
+        },
+        createMockExtra()
+      );
 
       // Should still return a valid result
       expect(result).toBeDefined();

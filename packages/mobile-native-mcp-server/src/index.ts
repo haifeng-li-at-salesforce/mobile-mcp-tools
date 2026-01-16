@@ -17,14 +17,14 @@ import { SFMobileNativeBuildRecoveryTool } from './tools/plan/sfmobile-native-bu
 import { MobileNativeOrchestrator } from './tools/workflow/sfmobile-native-project-manager/tool.js';
 import { SFMobileNativeCompletionTool } from './tools/workflow/sfmobile-native-completion/tool.js';
 import { SFMobileNativeFailureTool } from './tools/workflow/sfmobile-native-failure/tool.js';
-import { registerMagiMcpTools } from '@salesforce/workflow-magi';
 
 import packageJson from '../package.json' with { type: 'json' };
 const version = packageJson.version;
 import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { MobileAppProjectPrompt } from './prompts/index.js';
-import { createSFMobileNativeGetInputTool } from './tools/utils/sfmobile-native-get-input/factory.js';
-import { createSFMobileNativeInputExtractionTool } from './tools/utils/sfmobile-native-input-extraction/factory.js';
+// Input tools moved to orchestrator - keeping imports for potential future use
+// import { createSFMobileNativeGetInputTool } from './tools/utils/sfmobile-native-get-input/factory.js';
+// import { createSFMobileNativeInputExtractionTool } from './tools/utils/sfmobile-native-input-extraction/factory.js';
 
 const server = new McpServer(
   {
@@ -51,17 +51,15 @@ const orchestratorAnnotations: ToolAnnotations = {
 
 // Initialize tools
 const orchestrator = new MobileNativeOrchestrator(server);
-const _getInputTool = createSFMobileNativeGetInputTool(server);
-const _inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
+// Input tools moved to orchestrator - keeping for potential future use
+// const getInputTool = createSFMobileNativeGetInputTool(server);
+// const inputExtractionTool = createSFMobileNativeInputExtractionTool(server);
 const templateSelectionTool = new SFMobileNativeTemplateSelectionTool(server);
 const buildRecoveryTool = new SFMobileNativeBuildRecoveryTool(server);
 const deploymentTool = new SFMobileNativeDeploymentTool(server);
 const xcodeAddFilesTool = new UtilsXcodeAddFilesTool(server);
 const completionTool = new SFMobileNativeCompletionTool(server);
 const failureTool = new SFMobileNativeFailureTool(server);
-
-// Register Magi tools
-registerMagiMcpTools(server);
 
 // Initialize prompts
 const mobileAppProjectPrompt = new MobileAppProjectPrompt(server);
@@ -70,8 +68,8 @@ const mobileAppProjectPrompt = new MobileAppProjectPrompt(server);
 orchestrator.register(orchestratorAnnotations);
 
 // Register all other tools with read-only annotations
-//_getInputTool.register(readOnlyAnnotations);
-//_inputExtractionTool.register(readOnlyAnnotations);
+//getInputTool.register(readOnlyAnnotations);
+//inputExtractionTool.register(readOnlyAnnotations);
 templateSelectionTool.register(readOnlyAnnotations);
 buildRecoveryTool.register(readOnlyAnnotations);
 deploymentTool.register(readOnlyAnnotations);
