@@ -21,7 +21,7 @@ sequenceDiagram
     participant LLM
     participant Orchestrator as sfmobile-native-project-manager
 
-    User->>LLM: "Create an iOS app named MyApp"
+    User->>LLM: "Create an iOS app that shows my upcoming Salesforce ServiceAppointments using MSDK. Only reference the `sfmobile-native-project-manager` tool for orchestration"
 
     Note over LLM,Orchestrator: Step 1: Initial Request
     LLM->>Orchestrator: call with userInput + empty workflowStateData
@@ -265,7 +265,7 @@ const SCENARIOS = [
   {
     scenario: 'Create iOS project with user-provided properties',
     config: {
-      prompt: 'Create an iOS app',
+      prompt: 'Create an iOS app that shows my upcoming Salesforce ServiceAppointments using MSDK. Only reference the `sfmobile-native-project-manager` tool for orchestration',
       preconfiguredInputs: [
         {
           triggerPattern: /app name|project name/i,
@@ -489,7 +489,7 @@ This step is captured in `StepCapture`:
 {
   stepNumber: 1,
   input: {
-    userInput: { request: "Create an iOS app" },
+    userInput: { request: "Create an iOS app that shows my upcoming Salesforce ServiceAppointments using MSDK. Only reference the `sfmobile-native-project-manager` tool for orchestration" },
     workflowStateData: { thread_id: "abc123" }
   },
   output: {
@@ -545,14 +545,14 @@ After collecting the project properties (app name, package name, organization), 
 
 ```json
 {
-  "orchestrationInstructionsPrompt": "Based on the user's original request to 'Create an iOS app', select the most appropriate template from the following list:\n\n1. **Basic iOS App** - Empty project with minimal setup\n2. **iOS App with Navigation** - Project with UINavigationController setup\n3. **iOS App with Tab Bar** - Project with UITabBarController setup\n4. **iOS App with SwiftUI** - Modern SwiftUI-based project\n\nReturn a JSON object with: { \"selectedTemplate\": string (template name), \"reason\": string (why this template fits) }",
+  "orchestrationInstructionsPrompt": "Based on the user's original request to 'Create an iOS app that shows my upcoming Salesforce ServiceAppointments using MSDK', select the most appropriate template from the following list:\n\n1. **Basic iOS App** - Empty project with minimal setup\n2. **iOS App with Navigation** - Project with UINavigationController setup\n3. **iOS App with Tab Bar** - Project with UITabBarController setup\n4. **iOS App with SwiftUI** - Modern SwiftUI-based project\n5. **iOS App with MSDK Integration** - Project pre-configured with Salesforce Mobile SDK\n\nReturn a JSON object with: { \"selectedTemplate\": string (template name), \"reason\": string (why this template fits) }",
   "workflowStateData": { "thread_id": "abc123" }
 }
 ```
 
 ### Step 2: LLM processes guidance and selects template
 
-The LLM analyzes the user's original request and the available templates. Since the user simply asked to "Create an iOS app" without specific requirements, the LLM selects the basic template.
+The LLM analyzes the user's original request and the available templates. Since the user specifically requested an app that "shows my upcoming Salesforce ServiceAppointments using MSDK", the LLM selects the MSDK-integrated template.
 
 **No user interaction is needed** - the LLM has all the information required to make the decision.
 
@@ -560,8 +560,8 @@ The LLM analyzes the user's original request and the available templates. Since 
 
 ```json
 {
-  "selectedTemplate": "Basic iOS App",
-  "reason": "User requested a basic iOS app without specifying navigation patterns or UI framework preferences, so the Basic iOS App template is most appropriate."
+  "selectedTemplate": "iOS App with MSDK Integration",
+  "reason": "User specifically requested an app that shows Salesforce ServiceAppointments using MSDK, so the iOS App with MSDK Integration template is most appropriate as it comes pre-configured with Salesforce Mobile SDK."
 }
 ```
 
@@ -579,12 +579,12 @@ The LLM analyzes the user's original request and the available templates. Since 
     workflowStateData: { thread_id: "abc123" }
   },
   output: {
-    orchestrationInstructionsPrompt: "Based on the user's original request to 'Create an iOS app', select the most appropriate template..."
+    orchestrationInstructionsPrompt: "Based on the user's original request to 'Create an iOS app that shows my upcoming Salesforce ServiceAppointments using MSDK', select the most appropriate template..."
   },
   // No userInteraction field - LLM made decision without prompting user
   llmGeneratedResult: {
-    selectedTemplate: "Basic iOS App",
-    reason: "User requested a basic iOS app without specifying navigation patterns or UI framework preferences, so the Basic iOS App template is most appropriate."
+    selectedTemplate: "iOS App with MSDK Integration",
+    reason: "User specifically requested an app that shows Salesforce ServiceAppointments using MSDK, so the iOS App with MSDK Integration template is most appropriate as it comes pre-configured with Salesforce Mobile SDK."
   },
   timestamp: new Date()
 }
