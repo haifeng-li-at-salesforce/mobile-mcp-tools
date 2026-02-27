@@ -357,7 +357,7 @@ instructions for continuing the workflow.
    * name references in the generated prompt.
    *
    * @param nodeGuidanceData - The node guidance data containing task guidance and schemas
-   * @param workflowStateData - The workflow state data to round-trip back to the orchestrator
+   * @param workflowStateData - The workflo`w state data to round-trip back to the orchestrator
    * @returns A prompt with the task guidance and post-task instructions
    */
   protected createDirectGuidancePrompt(

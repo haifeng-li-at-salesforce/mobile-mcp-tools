@@ -39,6 +39,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@salesforce/lwc-dev-mobile-core": "^4.0.0-alpha.14",
     "@salesforce/magen-mcp-workflow": "*",
+    "@salesforce/telemetry": "^6.6.4",
     "dedent": "^1.7.1",
     "pino": "^9.9.5",
     "semver": "7.7.4",

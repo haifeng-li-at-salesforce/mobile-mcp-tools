@@ -7,7 +7,6 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SFMobileNativeTemplateSelectionTool } from './tools/plan/sfmobile-native-template-selection/tool.js';
 import { UtilsXcodeAddFilesTool } from './tools/utils/utils-xcode-add-files/tool.js';
@@ -22,13 +21,17 @@ import packageJson from '../package.json' with { type: 'json' };
 const version = packageJson.version;
 import { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { MobileAppProjectPrompt } from './prompts/index.js';
+import { TelemetryMcpServer, Telemetry, buildTelemetryConfig } from './telemetry/index.js';
 
-const server = new McpServer(
+const telemetryDisabled = process.env.SF_MCP_TELEMETRY_DISABLED === 'true';
+const telemetry = telemetryDisabled ? undefined : new Telemetry(buildTelemetryConfig(version));
+
+const server = new TelemetryMcpServer(
   {
     name: 'sfdc-mobile-native-mcp-server',
     version,
   },
-  { capabilities: { logging: {} } }
+  { capabilities: { logging: {} }, telemetry }
 );
 
 // Define annotations for different tool types
@@ -75,9 +78,21 @@ mobileAppProjectPrompt.register();
 export default server;
 
 async function main() {
+  await telemetry?.start();
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(`Salesforce Mobile Native MCP Server running on stdio, from '${process.cwd()}'`);
+
+  process.stdin.on('close', () => {
+    telemetry?.sendEvent('SERVER_STOPPED_SUCCESS');
+    telemetry?.stop();
+  });
+
+  process.on('SIGTERM', () => {
+    telemetry?.sendEvent('SERVER_STOPPED_SUCCESS');
+    telemetry?.stop();
+  });
 }
 
 main().catch(error => {
